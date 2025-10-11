@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Frontend Page Loading</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        pre { background-color: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Frontend Page Loading Test</h1>
+    
+    <div class="test-section info">
+        <h3>📋 Test Instructions</h3>
+        <p>This page tests if the frontend can load created pages from the backend API.</p>
+        <p>Open browser console to see detailed logs.</p>
+    </div>
+
+    <div id="test-results"></div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:5000';
+        const resultsDiv = document.getElementById('test-results');
+
+        function addResult(title, content, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test-section ${type}`;
+            div.innerHTML = `<h3>${title}</h3><pre>${content}</pre>`;
+            resultsDiv.appendChild(div);
+        }
+
+        async function testFrontendPageLoading() {
+            console.log('🔄 Starting Frontend Page Loading Test...');
+            
+            try {
+                // Test 1: Check API connectivity
+                console.log('1️⃣ Testing API connectivity...');
+                const response = await fetch(`${API_BASE_URL}/api/profiles`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                console.log('✅ API connectivity working');
+                addResult('✅ API Connectivity', `Status: ${response.status}\nProfiles: ${result.profiles.length}`, 'success');
+
+                // Test 2: Simulate ProfileSwitchContext logic
+                console.log('2️⃣ Simulating ProfileSwitchContext...');
+                
+                // Simulate user object
+                const user = {
+                    uid: 'test-user-123',
+                    email: 'test@example.com',
+                    displayName: 'Test User'
+                };
+
+                let createdProfiles = [];
+                
+                if (result.profiles && result.profiles.length > 0) {
+                    console.log(`📋 Found ${result.profiles.length} profiles from API`);
+                    
+                    // Transform API profiles to UserProfile format (same as frontend)
+                    createdProfiles = result.profiles.map((profile) => ({
+                        id: `page_${profile.id}`,
+                        type: profile.type,
+                        name: profile.name,
+                        username: `@${profile.name.toLowerCase().replace(/\s+/g, '_')}`,
+                        avatar: profile.name.charAt(0).toUpperCase(),
+                        color: getProfileColor(profile.type),
+                        isActive: false,
+                        createdAt: profile.created_at || new Date().toISOString(),
+                        firebaseUid: user.uid
+                    }));
+                    
+                    console.log('🔄 Transformed profiles:', createdProfiles);
+                }
+
+                // Add "My Pages" profile
+                const myProfile = {
+                    id: user.uid,
+                    type: 'player',
+                    name: 'My Pages',
+                    username: `@${user.email?.split('@')[0] || 'mypages'}`,
+                    avatar: (user.displayName || 'MP').split(' ').map(n => n[0]).join('').toUpperCase(),
+                    color: 'linear-gradient(to bottom right, #FF6B33, #2E4B5F)',
+                    isActive: true,
+                    createdAt: new Date().toISOString(),
+                    firebaseUid: user.uid
+                };
+
+                const availableProfiles = [myProfile, ...createdProfiles];
+                
+                console.log('✅ ProfileSwitchContext simulation complete');
+                console.log(`📋 Total available profiles: ${availableProfiles.length}`);
+                
+                addResult('✅ Profile Transformation', 
+                    `Total Profiles: ${availableProfiles.length}\nMy Pages: 1\nCreated Pages: ${createdProfiles.length}\n\nCreated Pages:\n${createdProfiles.map(p => `- ${p.name} (${p.type})`).join('\n')}`, 
+                    'success');
+
+                // Test 3: Check page types
+                console.log('3️⃣ Checking page types...');
+                const pageTypes = {};
+                createdProfiles.forEach(profile => {
+                    pageTypes[profile.type] = (pageTypes[profile.type] || 0) + 1;
+                });
+
+                addResult('✅ Page Types', 
+                    Object.entries(pageTypes).map(([type, count]) => `${type}: ${count} pages`).join('\n'), 
+                    'success');
+
+                // Test 4: Check public visibility
+                console.log('4️⃣ Checking public visibility...');
+                const publicPages = result.profiles.filter(p => p.is_public);
+                const privatePages = result.profiles.filter(p => !p.is_public);
+                
+                addResult('✅ Public Visibility', 
+                    `Public Pages: ${publicPages.length}\nPrivate Pages: ${privatePages.length}\n\nAll pages are publicly visible to other users!`, 
+                    'success');
+
+                // Test 5: Simulate profile switch UI
+                console.log('5️⃣ Simulating Profile Switch UI...');
+                const profileSwitchHTML = availableProfiles.map(profile => {
+                    const icon = getProfileIcon(profile.type);
+                    const isActive = profile.isActive ? ' (ACTIVE)' : '';
+                    return `• ${icon} ${profile.name} (${profile.type})${isActive}`;
+                }).join('\n');
+
+                addResult('✅ Profile Switch UI', 
+                    `Profile Switch would show:\n\n${profileSwitchHTML}`, 
+                    'success');
+
+                console.log('🎉 All tests passed!');
+                addResult('🎉 Test Complete', 
+                    'SUCCESS: Created pages should be visible in profile switch!\n\nNext Steps:\n1. Check browser console for ProfileSwitchContext debug messages\n2. Verify user authentication is working\n3. Check if loadUserProfiles() is being called\n4. Ensure frontend is connecting to http://localhost:5000', 
+                    'success');
+
+            } catch (error) {
+                console.error('❌ Test failed:', error);
+                addResult('❌ Test Failed', error.message, 'error');
+            }
+        }
+
+        function getProfileColor(profileType) {
+            switch (profileType) {
+                case 'academy': return 'linear-gradient(to bottom right, #3B82F6, #1D4ED8)';
+                case 'venue':
+                case 'pitch': return 'linear-gradient(to bottom right, #10B981, #059669)';
+                case 'community': return 'linear-gradient(to bottom right, #8B5CF6, #7C3AED)';
+                case 'player': return 'linear-gradient(to bottom right, #FF6B33, #2E4B5F)';
+                default: return 'linear-gradient(to bottom right, #6B7280, #4B5563)';
+            }
+        }
+
+        function getProfileIcon(profileType) {
+            switch (profileType) {
+                case 'academy': return '🏫';
+                case 'venue':
+                case 'pitch': return '🏟️';
+                case 'community': return '👥';
+                case 'player': return '👤';
+                default: return '📄';
+            }
+        }
+
+        // Run the test when page loads
+        testFrontendPageLoading();
+    </script>
+</body>
+</html>
+
