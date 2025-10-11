@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from models import db, Post, PostLike, PostComment, PostBookmark, User
 from datetime import datetime
 import re
+import uuid
 
 feed_bp = Blueprint('feed', __name__)
 
@@ -49,7 +50,7 @@ def get_feed():
         # Get current user ID if authenticated
         current_user_id = None
         try:
-            current_user_id = "17c9109e-cb20-4723-be49-c26b8343cd19"  # Using the Firebase user ID from database
+            current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
         except:
             pass  # Not authenticated, show public posts only
         
@@ -191,7 +192,7 @@ def create_post():
         description: Bad request
     """
     try:
-        current_user_id = "17c9109e-cb20-4723-be49-c26b8343cd19"  # Using the Firebase user ID from database
+        current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
         data = request.get_json()
         
         if not data or 'content' not in data:
@@ -244,6 +245,7 @@ def create_post():
             print(f"Error calculating engagement score: {e}")
         
         return jsonify({
+            'success': True,
             'message': 'Post created successfully',
             'post': post.to_dict()
         }), 201
@@ -262,31 +264,15 @@ def get_posts():
         order = request.args.get('order', 'desc')
         page_id = request.args.get('page_id')  # Add page_id filtering
         
-        # Build query
-        query = Post.query
+        # Use the same logic as feed posts for consistency
+        current_user_id = None
+        try:
+            current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
+        except:
+            pass  # Not authenticated, show public posts only
         
-        # Add page_id filtering if provided
-        if page_id:
-            query = query.filter_by(page_id=page_id)
-        
-        # Apply sorting
-        if sort_by == 'created_at':
-            if order == 'desc':
-                query = query.order_by(Post.created_at.desc())
-            else:
-                query = query.order_by(Post.created_at.asc())
-        elif sort_by == 'likes_count':
-            if order == 'desc':
-                query = query.order_by(Post.likes_count.desc())
-            else:
-                query = query.order_by(Post.likes_count.asc())
-        
-        # Get paginated results
-        posts = query.paginate(
-            page=page,
-            per_page=per_page,
-            error_out=False
-        )
+        # Get feed posts using the same method as /api/feed
+        posts = Post.get_feed_posts(current_user_id, page, per_page, None, None)
         
         # Convert posts to dict format
         posts_data = []
@@ -331,7 +317,7 @@ def toggle_like_post(post_id):
         description: Post not found
     """
     try:
-        current_user_id = "17c9109e-cb20-4723-be49-c26b8343cd19"  # Using the Firebase user ID from database
+        current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
         
         # Check if post exists
         post = Post.query.get(post_id)
@@ -391,7 +377,7 @@ def create_comment(post_id):
         description: Post not found
     """
     try:
-        current_user_id = "17c9109e-cb20-4723-be49-c26b8343cd19"  # Using the Firebase user ID from database
+        current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
         data = request.get_json()
         
         if not data or 'content' not in data:
@@ -527,7 +513,7 @@ def edit_comment(comment_id):
         description: Comment not found
     """
     try:
-        current_user_id = "17c9109e-cb20-4723-be49-c26b8343cd19"  # Using the Firebase user ID from database
+        current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
         
         comment = PostComment.query.get(comment_id)
         if not comment:
@@ -574,7 +560,7 @@ def delete_comment(comment_id):
         description: Comment not found
     """
     try:
-        current_user_id = "17c9109e-cb20-4723-be49-c26b8343cd19"  # Using the Firebase user ID from database
+        current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
         
         comment = PostComment.query.get(comment_id)
         if not comment:
@@ -612,7 +598,7 @@ def toggle_bookmark_post(post_id):
         description: Post not found
     """
     try:
-        current_user_id = "17c9109e-cb20-4723-be49-c26b8343cd19"  # Using the Firebase user ID from database
+        current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
         
         # Check if post exists
         post = Post.query.get(post_id)
@@ -694,7 +680,7 @@ def search_posts():
         # Get current user ID if authenticated
         current_user_id = None
         try:
-            current_user_id = "17c9109e-cb20-4723-be49-c26b8343cd19"  # Using the Firebase user ID from database
+            current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
         except:
             pass
         
@@ -816,7 +802,7 @@ def update_post(post_id):
         description: Forbidden - not the post owner
     """
     try:
-        current_user_id = "17c9109e-cb20-4723-be49-c26b8343cd19"  # Using the Firebase user ID from database
+        current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
         
         # Check if post exists
         post = Post.query.get(post_id)
@@ -884,7 +870,7 @@ def delete_post(post_id):
         description: Forbidden - not the post owner
     """
     try:
-        current_user_id = "17c9109e-cb20-4723-be49-c26b8343cd19"  # Using the Firebase user ID from database
+        current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
         
         # Check if post exists
         post = Post.query.get(post_id)

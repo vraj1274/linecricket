@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Heart, MessageCircle, Share, MapPin, Image, Video, Send } from 'lucide-react';
+import { ImageCarousel } from './ImageCarousel';
+import { ErrorBoundary } from './ErrorBoundary';
 import { apiService } from '../services/api';
 import { PostComments } from './PostComments';
 import { ShareModal } from './ShareModal';
@@ -10,7 +12,7 @@ interface Post {
   content: string;
   post_type: string;
   location?: string;
-  image_url?: string;
+  image_url?: string | string[];
   video_url?: string;
   likes_count: number;
   comments_count: number;
@@ -182,11 +184,15 @@ export function PostCard({ post }: PostCardProps) {
         <div className="mb-4">
           <div className="flex items-center text-gray-500 text-sm mb-2">
             <Image className="w-4 h-4 mr-1" />
-            Image
+            {Array.isArray(post.image_url) ? `${post.image_url.length} Images` : 'Image'}
           </div>
-          <div className="bg-gray-100 rounded-lg p-4 text-center">
-            <p className="text-gray-500">Image: {post.image_url}</p>
-          </div>
+          <ErrorBoundary>
+            <ImageCarousel 
+              images={Array.isArray(post.image_url) ? post.image_url : (post.image_url ? [post.image_url] : [])}
+              alt="Post images"
+              className="w-full"
+            />
+          </ErrorBoundary>
         </div>
       )}
 
@@ -196,8 +202,18 @@ export function PostCard({ post }: PostCardProps) {
             <Video className="w-4 h-4 mr-1" />
             Video
           </div>
-          <div className="bg-gray-100 rounded-lg p-4 text-center">
-            <p className="text-gray-500">Video: {post.video_url}</p>
+          <div className="rounded-lg overflow-hidden">
+            <video 
+              src={post.video_url} 
+              controls 
+              className="w-full h-auto max-h-96"
+              onError={(e) => {
+                console.error('Video failed to load:', post.video_url);
+                e.currentTarget.style.display = 'none';
+              }}
+            >
+              Your browser does not support the video tag.
+            </video>
           </div>
         </div>
       )}

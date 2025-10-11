@@ -207,11 +207,11 @@ export function CreatedPageView({ onBack, pageId, pageName, pageType }: CreatedP
       
       const postData = {
         content: caption.trim(),
-        image_url: images.length > 0 ? images[0] : undefined, // Send first image as URL
+        image_url: images.length > 0 ? images : undefined, // Send all images as array
         image_caption: images.length > 0 ? caption.trim() : undefined, // Use caption as image caption
         video_url: video || undefined, // Rename video to video_url for clarity
         location: location || undefined,
-        post_type: video ? 'video' : (images.length > 0 ? 'image' : 'text'),
+        post_type: 'general',
         visibility: visibility
       };
       

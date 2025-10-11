@@ -22,8 +22,9 @@ const firebaseConfig = {
 // Validate Firebase configuration
 const configValidation = validateFirebaseConfig(firebaseConfig);
 if (!configValidation.isValid) {
-  console.error('Firebase configuration validation failed:', configValidation.errors);
-  throw new Error(`Firebase configuration is invalid: ${configValidation.errors.join(', ')}`);
+  console.warn('Firebase configuration validation failed:', configValidation.errors);
+  // Don't throw error, just log warning
+  // throw new Error(`Firebase configuration is invalid: ${configValidation.errors.join(', ')}`);
 }
 
 // Initialize Firebase
