@@ -21,6 +21,7 @@ import {
 import { useProfileSwitch } from '../contexts/ProfileSwitchContext';
 import { profilePageService, Post, Job, JobApplication, ProfileStats } from '../services/profilePageService';
 import { API_BASE_URL } from '../config/api';
+import { MediaDisplay } from './MediaDisplay';
 
 interface DynamicProfilePageProps {
   onBack: () => void;
@@ -632,7 +633,12 @@ export function DynamicProfilePage({ onBack, profileId }: DynamicProfilePageProp
             </div>
                             <p className="text-gray-900 mb-3">{post.content}</p>
                             {post.image_url && (
-                              <img src={post.image_url} alt="Post" className="w-full max-w-md rounded-lg mb-3" />
+                              <div className="mb-3">
+                                <MediaDisplay 
+                                  imageUrl={post.image_url}
+                                  maxHeight="max-h-80"
+                                />
+                              </div>
                             )}
                             <div className="flex items-center space-x-4 text-gray-500">
                               <button className="flex items-center space-x-1 hover:text-red-500 transition-colors">

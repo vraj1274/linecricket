@@ -9,11 +9,17 @@ class PageType(Enum):
     PITCH = "Pitch"
 
 class SearchType(Enum):
-    USER = "user"
-    PAGE = "page"
-    POST = "post"
-    MATCH = "match"
-    EVENT = "event"
+    USER = "User"
+    PAGE = "Page"
+    POST = "Post"
+    MATCH = "Match"
+    EVENT = "Event"
+    ACADEMY = "Academy"
+    JOB = "Job"
+    COACH = "Coach"
+    COMMUNITY = "Community"
+    VENUE = "Venue"
+    LOCATION = "Location"
 
 class MatchType(Enum):
     FRIENDLY = "friendly"

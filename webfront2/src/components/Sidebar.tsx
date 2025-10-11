@@ -1,5 +1,5 @@
-import { BarChart3, Bell, Check, Home, Loader2, MessageCircle, MoreHorizontal, Plus, Search, User, Users, Building2, MapPin, Globe } from 'lucide-react';
-import { useState } from 'react';
+import { BarChart3, Bell, Check, Home, Loader2, MessageCircle, MoreHorizontal, Plus, Search, User, Users, Building2, MapPin, Globe, Trash2, AlertTriangle } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { PageType } from '../App';
 import newIcon from '../assets/newiconfinal.svg';
 import { useMobileApp } from '../contexts/MobileAppContext';
@@ -18,12 +18,32 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showProfileSwitch, setShowProfileSwitch] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [profileToDelete, setProfileToDelete] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { showMobileAppModal } = useMobileApp();
   
   // Get real user data from contexts
   const { userProfile, loading: profileLoading } = useUserProfile();
   const { user: firebaseUser } = useFirebase();
-  const { currentProfile, availableProfiles, switchProfile, getProfilePage } = useProfileSwitch();
+  const { 
+    currentProfile, 
+    availableProfiles, 
+    switchProfile, 
+    deleteProfile,
+    getProfilePage,
+    scrollToProfile,
+    scrollToTop,
+    scrollToBottom,
+    isScrolling,
+    scrollPosition,
+    canScrollUp,
+    canScrollDown,
+    searchQuery,
+    setSearchQuery,
+    filteredProfiles,
+    clearSearch
+  } = useProfileSwitch();
 
   // Get appropriate icon for profile type
   const getProfileIcon = (type: string) => {
@@ -40,6 +60,123 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
         return <Users className="w-4 h-4" />;
       default:
         return <User className="w-4 h-4" />;
+    }
+  };
+
+  // Handle delete page
+  const handleDeletePage = (page: any) => {
+    setProfileToDelete(page);
+    setShowDeleteModal(true);
+  };
+
+  // Confirm delete page
+  const confirmDeletePage = async () => {
+    console.log('🔥 DELETE BUTTON CLICKED!');
+    console.log('🔥 Page to delete:', profileToDelete);
+    
+    if (!profileToDelete) {
+      console.error('❌ No page selected for deletion');
+      alert('No page selected for deletion');
+      return;
+    }
+    
+    try {
+      console.log('🚀 Starting deletion of page:', profileToDelete);
+      setIsDeleting(true);
+      
+      // Try context delete function first
+      try {
+        console.log('📞 Calling deleteProfile with ID:', profileToDelete.id);
+        await deleteProfile(profileToDelete.id);
+        console.log('✅ Context deleteProfile succeeded');
+      } catch (contextError) {
+        console.warn('⚠️ Context deleteProfile failed, trying direct API call:', contextError);
+        
+        // Fallback: Direct API call for page deletion
+        const apiUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/profiles/${profileToDelete.id}`;
+        console.log('🌐 Direct API call to:', apiUrl);
+        
+        const response = await fetch(apiUrl, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`API call failed: ${response.statusText}`);
+        }
+        
+        console.log('✅ Direct API call succeeded');
+        
+        // Manually update the page list since context didn't work
+        // This is a fallback - in a real app you'd want to refresh the context
+        console.log('🔄 Manual page list update (fallback)');
+      }
+      
+      console.log('✅ Page deleted successfully:', profileToDelete.name);
+      
+      // Close modal and reset state
+      setShowDeleteModal(false);
+      setProfileToDelete(null);
+      
+      // Show success message
+      console.log('🎉 Page deletion completed');
+      alert(`Page "${profileToDelete.name}" deleted successfully!`);
+      
+    } catch (error) {
+      console.error('❌ Error deleting page:', error);
+      alert(`Failed to delete page: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Cancel delete
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setProfileToDelete(null);
+  };
+
+  // Handle keyboard events for delete modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (showDeleteModal) {
+        if (e.key === 'Enter' && !isDeleting) {
+          e.preventDefault();
+          confirmDeletePage();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          cancelDelete();
+        }
+      }
+    };
+
+    if (showDeleteModal) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [showDeleteModal, isDeleting, profileToDelete]);
+
+  // Test scrollbar functionality
+  const testScrollbar = () => {
+    const container = document.querySelector('.profile-switch-container');
+    if (container) {
+      console.log('🧪 Testing scrollbar...');
+      console.log('📏 Container height:', container.clientHeight);
+      console.log('📏 Scroll height:', container.scrollHeight);
+      console.log('📏 Can scroll:', container.scrollHeight > container.clientHeight);
+      
+      if (container.scrollHeight > container.clientHeight) {
+        console.log('✅ Scrollbar should be visible');
+        // Test scroll
+        container.scrollTo({ top: 50, behavior: 'smooth' });
+        setTimeout(() => {
+          container.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 1000);
+      } else {
+        console.log('⚠️ Not enough content to scroll');
+      }
     }
   };
 
@@ -108,15 +245,25 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
   };
 
   const handleMenuItemClick = (pageId: PageType) => {
-    // All pages now navigate directly without popup restrictions
-    onPageChange(pageId);
+    console.log('🎯 Sidebar menu item clicked:', pageId);
+    
+    // Handle profile navigation separately to avoid conflicts
+    if (pageId === 'profile') {
+      console.log('👤 Profile button clicked - navigating to my-profile');
+      // Navigate to user's actual profile, not dynamic profile view
+      onPageChange('my-profile');
+    } else {
+      console.log('📄 Other page clicked - navigating to:', pageId);
+      // All other pages navigate directly
+      onPageChange(pageId);
+    }
   };
 
   return (
     <>
       <div className="fixed top-0 left-0 h-screen w-[280px] bg-gray-50 border-r border-gray-200 z-40 flex flex-col">
         {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">
+        <div className="flex-1 overflow-y-auto sidebar-scrollbar cricket-scrollbar">
           <div className="p-6">
             {/* Logo */}
             <div className="mb-8">
@@ -187,8 +334,8 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
                 <button 
                   onClick={() => setShowProfileSwitch(!showProfileSwitch)}
                   className="p-1 hover:bg-gray-100 rounded-lg"
-                  title="Switch Profile"
-                  aria-label="Switch Profile"
+                  title="Switch Page"
+                  aria-label="Switch Page"
                 >
                   <Users className="w-4 h-4" />
                 </button>
@@ -216,69 +363,210 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
                 <h3 className="text-sm font-semibold text-gray-900">My Pages</h3>
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                {availableProfiles.length} {availableProfiles.length === 1 ? 'item' : 'items'} available
+                {availableProfiles.length} {availableProfiles.length === 1 ? 'page' : 'pages'} available
               </p>
             </div>
             
-            <div className="max-h-64 overflow-y-auto">
+            <div className="max-h-64 overflow-y-auto profile-switch-scrollbar profile-list-scrollbar profile-switch-container relative">
+              {/* Debug Info */}
+              <div className="px-4 py-2 bg-yellow-50 border-b border-yellow-200 text-xs text-yellow-800">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <strong>SCROLLBAR DEBUG:</strong> Pages: {availableProfiles.length} | Max Height: 16rem (256px) | Overflow: auto
+                  </div>
+                  <button
+                    onClick={testScrollbar}
+                    className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
+                  >
+                    Test Scroll
+                  </button>
+                </div>
+              </div>
+              
+              {/* Scroll Progress Indicator */}
+              {availableProfiles.length > 3 && (
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gray-200 z-10">
+                  <div 
+                    className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300 ease-out"
+                    style={{ 
+                      width: `${Math.min(100, (scrollPosition / 200) * 100)}%` 
+                    }}
+                  ></div>
+                </div>
+              )}
+              
+              {/* Scroll Shadow Indicators */}
+              {availableProfiles.length > 3 && (
+                <>
+                  {/* Top Shadow */}
+                  <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-white to-transparent z-5 pointer-events-none"></div>
+                  {/* Bottom Shadow */}
+                  <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-white to-transparent z-5 pointer-events-none"></div>
+                </>
+              )}
+              
+              {/* Search Input */}
+              {availableProfiles.length > 1 && (
+                <div className="px-4 py-2 border-b border-gray-100">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search profiles..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={clearSearch}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {/* Scroll Controls */}
+              {availableProfiles.length > 3 && (
+                <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-blue-50">
+                  <button
+                    onClick={scrollToTop}
+                    disabled={isScrolling || !canScrollUp}
+                    className={`flex items-center space-x-1 text-xs transition-colors px-2 py-1 rounded-md ${
+                      canScrollUp 
+                        ? 'text-gray-600 hover:text-blue-600 hover:bg-blue-100' 
+                        : 'text-gray-400 cursor-not-allowed'
+                    } disabled:opacity-50`}
+                  >
+                    <span>↑ Top</span>
+                    {canScrollUp && <div className="w-1 h-1 bg-blue-400 rounded-full animate-pulse"></div>}
+                  </button>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-gray-500">
+                      {filteredProfiles.length} of {availableProfiles.length} profiles
+                    </span>
+                    {isScrolling && (
+                      <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full animate-pulse"></div>
+                    )}
+                    {/* Scroll Indicator */}
+                    <div className="flex items-center space-x-1">
+                      <div className="w-1 h-1 bg-blue-400 rounded-full"></div>
+                      <div className="w-1 h-1 bg-blue-300 rounded-full"></div>
+                      <div className="w-1 h-1 bg-blue-200 rounded-full"></div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={scrollToBottom}
+                    disabled={isScrolling || !canScrollDown}
+                    className={`flex items-center space-x-1 text-xs transition-colors px-2 py-1 rounded-md ${
+                      canScrollDown 
+                        ? 'text-gray-600 hover:text-blue-600 hover:bg-blue-100' 
+                        : 'text-gray-400 cursor-not-allowed'
+                    } disabled:opacity-50`}
+                  >
+                    <span>↓ Bottom</span>
+                    {canScrollDown && <div className="w-1 h-1 bg-blue-400 rounded-full animate-pulse"></div>}
+                  </button>
+                </div>
+              )}
+              
+              {/* Test Content to Force Scrollbar */}
+              <div className="px-4 py-2 bg-blue-50 border-b border-blue-200">
+                <p className="text-xs text-blue-800">
+                  <strong>TEST SCROLLBAR:</strong> This content should make the container scrollable
+                </p>
+              </div>
+              
               {/* Available Profiles from Context */}
-              {availableProfiles.map((profile) => (
-                <button
+              {filteredProfiles.length > 0 ? (
+                filteredProfiles.map((profile) => (
+                <div
                   key={profile.id}
-                  onClick={async () => {
-                    try {
-                      // Switch profile first
-                      await switchProfile(profile.id);
-                      
-                      // Then navigate to the appropriate page
-                      const profilePage = getProfilePage(profile.type, profile.id);
-                      
-                      // Pass profile data for created pages
-                      if (profilePage === 'created-page') {
-                        console.log('Navigating to created-page with data:', {
-                          id: profile.id,
-                          name: profile.name,
-                          type: profile.type
-                        });
-                        onPageChange(profilePage as any, {
-                          id: profile.id,
-                          name: profile.name,
-                          type: profile.type
-                        });
-                      } else {
-                        onPageChange(profilePage as any);
-                      }
-                      setShowProfileSwitch(false);
-                    } catch (error) {
-                      console.error('Error switching profile:', error);
-                      setShowProfileSwitch(false);
-                    }
-                  }}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                  className={`w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 transition-colors group ${
                     profile.isActive ? 'bg-blue-50' : ''
                   }`}
                 >
-                  <div 
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold"
-                    style={{ background: profile.color }}
-                  >
-                    {getProfileIcon(profile.type)}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2">
-                      <p className="text-sm text-gray-900">{profile.name}</p>
-                      {profile.isActive && <Check className="w-4 h-4 text-blue-600" />}
-                    </div>
-                    <p className="text-xs text-gray-500">{profile.username}</p>
-                    <p className="text-xs text-gray-400 capitalize">
-                      {['academy', 'venue', 'community'].includes(profile.type) 
-                        ? `${profile.type} Page` 
-                        : `${profile.type} Page`
+                  <button
+                    id={`profile-${profile.id}`}
+                    onClick={async () => {
+                      try {
+                        console.log('🔄 Switching to page:', profile.name, 'Type:', profile.type);
+                        
+                        // Switch profile first
+                        await switchProfile(profile.id);
+                        
+                        // Then navigate to the appropriate page
+                        const profilePage = getProfilePage(profile.type, profile.id);
+                        console.log('📄 Page type determined:', profilePage);
+                        
+                        // Pass profile data for created pages
+                        if (profilePage === 'created-page') {
+                          console.log('📄 Navigating to created-page with data:', {
+                            id: profile.id,
+                            name: profile.name,
+                            type: profile.type
+                          });
+                          onPageChange(profilePage as any, {
+                            id: profile.id,
+                            name: profile.name,
+                            type: profile.type
+                          });
+                        } else {
+                          console.log('📄 Navigating to:', profilePage);
+                          onPageChange(profilePage as any);
+                        }
+                        setShowProfileSwitch(false);
+                      } catch (error) {
+                        console.error('❌ Error switching profile:', error);
+                        setShowProfileSwitch(false);
                       }
-                    </p>
-                  </div>
-                </button>
-              ))}
+                    }}
+                    className="flex items-center space-x-3 flex-1 text-left"
+                  >
+                    <div 
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold"
+                      style={{ background: profile.color }}
+                    >
+                      {getProfileIcon(profile.type)}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        <p className="text-sm text-gray-900">{profile.name}</p>
+                        {profile.isActive && <Check className="w-4 h-4 text-blue-600" />}
+                      </div>
+                      <p className="text-xs text-gray-500">{profile.username}</p>
+                      <p className="text-xs text-gray-400 capitalize">
+                        {['academy', 'venue', 'community'].includes(profile.type) 
+                          ? `${profile.type} Page` 
+                          : `${profile.type} Page`
+                        }
+                      </p>
+                    </div>
+                  </button>
+                  
+                  {/* Delete Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeletePage(profile);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-100 rounded-md text-red-500 hover:text-red-700"
+                    title="Delete Page"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                ))
+              ) : (
+                <div className="px-4 py-8 text-center">
+                  <Search className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">No profiles found</p>
+                  <p className="text-xs text-gray-400 mt-1">Try adjusting your search</p>
+                </div>
+              )}
               
               {/* Default User Profile (if no profiles in context) */}
               {availableProfiles.length === 0 && (
@@ -395,6 +683,93 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
             setShowProfileSwitch(false);
           }}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-xl border border-gray-200 p-6 max-w-md w-full mx-4">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Delete Page</h3>
+                <p className="text-sm text-gray-500">This action cannot be undone</p>
+              </div>
+            </div>
+            
+            {/* Debug Info */}
+            <div className="mb-4 p-2 bg-yellow-50 border border-yellow-200 rounded">
+              <p className="text-xs text-yellow-800">
+                <strong>DEBUG:</strong> Modal is visible. Profile: {profileToDelete?.name || 'None'}
+              </p>
+            </div>
+            
+            <div className="mb-6">
+              <p className="text-sm text-gray-700 mb-2">
+                Are you sure you want to delete the page <strong>{profileToDelete?.name}</strong>?
+              </p>
+              <p className="text-xs text-gray-500">
+                This will permanently remove the page and all associated data.
+              </p>
+              {profileToDelete && (
+                <div className="mt-3 p-2 bg-gray-50 rounded-lg">
+                  <p className="text-xs text-gray-600">
+                    <strong>Page ID:</strong> {profileToDelete.id}
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    <strong>Page Type:</strong> {profileToDelete.type}
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            {/* Test Button */}
+            <div className="mb-4">
+              <button
+                onClick={() => {
+                  console.log('🧪 TEST BUTTON CLICKED!');
+                  alert('Test button works! Delete button should work too.');
+                }}
+                className="w-full px-4 py-2 text-sm font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg border border-blue-300"
+                type="button"
+              >
+                🧪 TEST BUTTON - Click to verify modal is working
+              </button>
+            </div>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={cancelDelete}
+                disabled={isDeleting}
+                className="flex-1 px-6 py-3 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 border border-gray-300"
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeletePage}
+                disabled={isDeleting}
+                className="flex-1 px-6 py-3 text-sm font-bold text-white bg-red-600 hover:bg-red-700 active:bg-red-800 rounded-lg transition-all duration-200 disabled:opacity-50 flex items-center justify-center space-x-2 focus:outline-none focus:ring-4 focus:ring-red-300 focus:ring-offset-2 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none"
+                type="button"
+                style={{ minHeight: '48px' }}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span className="font-semibold">Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-5 h-5" />
+                    <span className="font-semibold">DELETE PAGE</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

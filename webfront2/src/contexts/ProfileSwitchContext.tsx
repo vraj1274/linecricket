@@ -20,9 +20,23 @@ interface ProfileSwitchContextType {
   availableProfiles: UserProfile[];
   switchProfile: (profileId: number | string) => Promise<void>;
   addProfile: (profile: UserProfile) => void;
+  deleteProfile: (profileId: number | string) => Promise<void>;
   getProfilePage: (profileType: string, profileId?: number | string) => string;
   loading: boolean;
   error: string | null;
+  // Scrolling features
+  scrollToProfile: (profileId: number | string) => void;
+  scrollToTop: () => void;
+  scrollToBottom: () => void;
+  isScrolling: boolean;
+  scrollPosition: number;
+  canScrollUp: boolean;
+  canScrollDown: boolean;
+  // Search/filter features
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  filteredProfiles: UserProfile[];
+  clearSearch: () => void;
 }
 
 const ProfileSwitchContext = createContext<ProfileSwitchContextType | undefined>(undefined);
@@ -36,6 +50,11 @@ export function ProfileSwitchProvider({ children }: ProfileSwitchProviderProps) 
   const [availableProfiles, setAvailableProfiles] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isScrolling, setIsScrolling] = useState(false);
+  const [scrollPosition, setScrollPosition] = useState(0);
+  const [canScrollUp, setCanScrollUp] = useState(false);
+  const [canScrollDown, setCanScrollDown] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const { user } = useFirebase();
 
   // Helper function to get profile color based on type
@@ -333,6 +352,78 @@ export function ProfileSwitchProvider({ children }: ProfileSwitchProviderProps) 
     }
   };
 
+  const deleteProfile = async (profileId: number | string): Promise<void> => {
+    console.log('🗑️ Delete profile called with ID:', profileId);
+    console.log('👤 Current user:', user?.email);
+    console.log('📋 Available profiles:', availableProfiles.length);
+    
+    const profile = availableProfiles.find(p => String(p.id) === String(profileId));
+    console.log('🔍 Found profile:', profile);
+    
+    if (profile && user) {
+      try {
+        console.log('🚀 Starting profile deletion...');
+        setLoading(true);
+        setError(null);
+
+        const apiUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/profiles/${profileId}`;
+        console.log('🌐 API URL:', apiUrl);
+
+        // Call the delete API
+        const response = await fetch(apiUrl, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+
+        console.log('📡 API Response status:', response.status);
+        console.log('📡 API Response ok:', response.ok);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('❌ API Error:', errorText);
+          throw new Error(`Failed to delete profile: ${response.statusText}`);
+        }
+
+        console.log('✅ API call successful, updating UI...');
+
+        // Remove from available profiles
+        setAvailableProfiles(prev => {
+          const filtered = prev.filter(p => String(p.id) !== String(profileId));
+          console.log('📋 Updated profiles count:', filtered.length);
+          return filtered;
+        });
+        
+        // If the deleted profile was active, switch to the first available profile
+        if (currentProfile && String(currentProfile.id) === String(profileId)) {
+          console.log('🔄 Active profile deleted, switching to another...');
+          const remainingProfiles = availableProfiles.filter(p => String(p.id) !== String(profileId));
+          if (remainingProfiles.length > 0) {
+            console.log('🔄 Switching to profile:', remainingProfiles[0].name);
+            await switchProfile(remainingProfiles[0].id);
+          } else {
+            console.log('🔄 No profiles left, clearing current profile');
+            setCurrentProfile(null);
+          }
+        }
+
+        console.log(`✅ Successfully deleted profile: ${profile.name} (${profile.type})`);
+      } catch (error) {
+        console.error('❌ Error deleting profile:', error);
+        setError('Failed to delete profile');
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      console.error('❌ Profile not found or user not authenticated');
+      console.log('Profile found:', !!profile);
+      console.log('User found:', !!user);
+      throw new Error('Profile not found or user not authenticated');
+    }
+  };
+
   const getProfilePage = (profileType: string, profileId?: number | string): string => {
     // Special case for "My Pages" (user's actual profile)
     if (profileId === user?.uid) {
@@ -346,14 +437,119 @@ export function ProfileSwitchProvider({ children }: ProfileSwitchProviderProps) 
     return 'dynamic-profile';
   };
 
+  // Scrolling functions
+  const scrollToProfile = (profileId: number | string) => {
+    const profileElement = document.getElementById(`profile-${profileId}`);
+    if (profileElement) {
+      setIsScrolling(true);
+      profileElement.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center' 
+      });
+      setTimeout(() => setIsScrolling(false), 500);
+    }
+  };
+
+  // Track scroll position and add keyboard navigation
+  useEffect(() => {
+    const container = document.querySelector('.profile-switch-container');
+    if (container) {
+      const handleScroll = () => {
+        const scrollTop = container.scrollTop;
+        const scrollHeight = container.scrollHeight;
+        const clientHeight = container.clientHeight;
+        
+        setScrollPosition(scrollTop);
+        setCanScrollUp(scrollTop > 0);
+        setCanScrollDown(scrollTop < scrollHeight - clientHeight - 1);
+      };
+      
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          const currentIndex = availableProfiles.findIndex(p => p.isActive);
+          if (currentIndex !== -1) {
+            let newIndex;
+            if (e.key === 'ArrowUp') {
+              newIndex = currentIndex > 0 ? currentIndex - 1 : availableProfiles.length - 1;
+            } else {
+              newIndex = currentIndex < availableProfiles.length - 1 ? currentIndex + 1 : 0;
+            }
+            scrollToProfile(availableProfiles[newIndex].id);
+          }
+        }
+      };
+      
+      container.addEventListener('scroll', handleScroll);
+      container.addEventListener('keydown', handleKeyDown);
+      
+      // Initial scroll state check
+      handleScroll();
+      
+      return () => {
+        container.removeEventListener('scroll', handleScroll);
+        container.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [availableProfiles.length, availableProfiles]);
+
+  const scrollToTop = () => {
+    const container = document.querySelector('.profile-switch-container');
+    if (container) {
+      setIsScrolling(true);
+      container.scrollTo({ 
+        top: 0, 
+        behavior: 'smooth' 
+      });
+      setTimeout(() => setIsScrolling(false), 500);
+    }
+  };
+
+  const scrollToBottom = () => {
+    const container = document.querySelector('.profile-switch-container');
+    if (container) {
+      setIsScrolling(true);
+      container.scrollTo({ 
+        top: container.scrollHeight, 
+        behavior: 'smooth' 
+      });
+      setTimeout(() => setIsScrolling(false), 500);
+    }
+  };
+
+  // Search/filter functionality
+  const filteredProfiles = availableProfiles.filter(profile => 
+    profile.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    profile.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    profile.type.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const clearSearch = () => {
+    setSearchQuery('');
+  };
+
   const value: ProfileSwitchContextType = {
     currentProfile,
     availableProfiles,
     switchProfile,
     addProfile,
+    deleteProfile,
     getProfilePage,
     loading,
-    error
+    error,
+    // Scrolling features
+    scrollToProfile,
+    scrollToTop,
+    scrollToBottom,
+    isScrolling,
+    scrollPosition,
+    canScrollUp,
+    canScrollDown,
+    // Search/filter features
+    searchQuery,
+    setSearchQuery,
+    filteredProfiles,
+    clearSearch
   };
 
   return (

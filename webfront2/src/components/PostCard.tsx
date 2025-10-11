@@ -4,6 +4,7 @@ import { apiService } from '../services/api';
 import { PostComments } from './PostComments';
 import { ShareModal } from './ShareModal';
 import { ShareSuccessPopup } from './SuccessPopup';
+import { MediaDisplay } from './MediaDisplay';
 
 interface Post {
   id: string;
@@ -178,27 +179,18 @@ export function PostCard({ post }: PostCardProps) {
       </div>
 
       {/* Media Display */}
-      {post.image_url && (
+      {(post.image_url || post.video_url) && (
         <div className="mb-4">
           <div className="flex items-center text-gray-500 text-sm mb-2">
-            <Image className="w-4 h-4 mr-1" />
-            Image
+            {post.image_url && <Image className="w-4 h-4 mr-1" />}
+            {post.video_url && <Video className="w-4 h-4 mr-1" />}
+            {post.image_url ? 'Image' : 'Video'}
           </div>
-          <div className="bg-gray-100 rounded-lg p-4 text-center">
-            <p className="text-gray-500">Image: {post.image_url}</p>
-          </div>
-        </div>
-      )}
-
-      {post.video_url && (
-        <div className="mb-4">
-          <div className="flex items-center text-gray-500 text-sm mb-2">
-            <Video className="w-4 h-4 mr-1" />
-            Video
-          </div>
-          <div className="bg-gray-100 rounded-lg p-4 text-center">
-            <p className="text-gray-500">Video: {post.video_url}</p>
-          </div>
+          <MediaDisplay 
+            imageUrl={post.image_url}
+            videoUrl={post.video_url}
+            maxHeight="max-h-96"
+          />
         </div>
       )}
 

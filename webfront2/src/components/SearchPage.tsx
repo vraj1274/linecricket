@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, UserPlus, MapPin, GraduationCap, Briefcase, Users, Check, X, Loader2 } from 'lucide-react';
+import { Search, UserPlus, MapPin, GraduationCap, Briefcase, Users, Check, X, Loader2, BarChart3 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { useUserProfile } from '../contexts/UserProfileContext';
 
@@ -27,14 +27,25 @@ export function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<{ [key: number]: boolean }>({});
   const [showFilters, setShowFilters] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState({
+    skillLevel: '',
+    dateRange: '',
+    entryFee: '',
+    verifiedOnly: false,
+    equipmentProvided: false
+  });
 
   const filters = [
     { id: 'all', label: 'All', icon: '🔍', iconComponent: Search },
+    { id: 'user', label: 'Users', icon: '👤', iconComponent: UserPlus },
+    { id: 'match', label: 'Matches', icon: '🏏', iconComponent: BarChart3 },
+    { id: 'post', label: 'Posts', icon: '📝', iconComponent: Search },
     { id: 'location', label: 'Location', icon: '📍', iconComponent: MapPin },
     { id: 'academy', label: 'Academy', icon: '🏫', iconComponent: GraduationCap },
     { id: 'job', label: 'Job', icon: '💼', iconComponent: Briefcase },
     { id: 'coach', label: 'Coach', icon: '👨‍🏫', iconComponent: UserPlus },
-    { id: 'community', label: 'Community', icon: '👥', iconComponent: Users }
+    { id: 'community', label: 'Community', icon: '👥', iconComponent: Users },
+    { id: 'venue', label: 'Venues', icon: '🏟️', iconComponent: MapPin }
   ];
 
   // Debounced search function
@@ -62,7 +73,23 @@ export function SearchPage() {
       setLoading(true);
       const response = await apiService.searchContent(query, filter);
       if (response.success) {
-        setSearchResults(response.results || []);
+        // Transform the results to match the expected format
+        const transformedResults = (response.results || []).map((result: any) => ({
+          id: result.id,
+          name: result.name,
+          initials: result.initials,
+          followers: result.followers,
+          type: result.type,
+          verified: result.verified,
+          gradient: result.gradient,
+          category: result.category,
+          description: result.description,
+          location: result.location,
+          isConnected: result.isConnected || false,
+          isApplied: result.isApplied || false,
+          isJoined: result.isJoined || false
+        }));
+        setSearchResults(transformedResults);
       } else {
         console.error('Search failed:', response.message);
         setSearchResults([]);
@@ -81,7 +108,23 @@ export function SearchPage() {
       setLoading(true);
       const response = await apiService.getTrendingContent(activeFilter);
       if (response.success) {
-        setSearchResults(response.results || []);
+        // Transform the results to match the expected format
+        const transformedResults = (response.results || []).map((result: any) => ({
+          id: result.id,
+          name: result.name,
+          initials: result.initials,
+          followers: result.followers,
+          type: result.type,
+          verified: result.verified,
+          gradient: result.gradient,
+          category: result.category,
+          description: result.description,
+          location: result.location,
+          isConnected: result.isConnected || false,
+          isApplied: result.isApplied || false,
+          isJoined: result.isJoined || false
+        }));
+        setSearchResults(transformedResults);
       }
     } catch (error) {
       console.error('Error loading trending content:', error);
@@ -199,7 +242,7 @@ export function SearchPage() {
       {/* Filter Buttons */}
       {showFilters && (
         <div className="mb-6">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 mb-4">
             {filters.map((filter) => {
               const IconComponent = filter.iconComponent;
               return (
@@ -217,6 +260,100 @@ export function SearchPage() {
                 </button>
               );
             })}
+          </div>
+          
+          {/* Advanced Filters */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h4 className="text-sm font-medium text-gray-700 mb-3">Advanced Filters</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Skill Level Filter */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Skill Level</label>
+                <select
+                  value={advancedFilters.skillLevel}
+                  onChange={(e) => setAdvancedFilters(prev => ({ ...prev, skillLevel: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="">All Levels</option>
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                  <option value="professional">Professional</option>
+                </select>
+              </div>
+              
+              {/* Date Range Filter */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Date Range</label>
+                <select
+                  value={advancedFilters.dateRange}
+                  onChange={(e) => setAdvancedFilters(prev => ({ ...prev, dateRange: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="">Any Time</option>
+                  <option value="today">Today</option>
+                  <option value="week">This Week</option>
+                  <option value="month">This Month</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+              </div>
+              
+                {/* Entry Fee Filter */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Entry Fee</label>
+                  <select
+                    value={advancedFilters.entryFee}
+                    onChange={(e) => setAdvancedFilters(prev => ({ ...prev, entryFee: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  >
+                    <option value="">Any Price</option>
+                    <option value="0">Free</option>
+                    <option value="50">Under $50</option>
+                    <option value="100">$50 - $100</option>
+                    <option value="100+">$100+</option>
+                  </select>
+                </div>
+            </div>
+            
+            {/* Checkbox Filters */}
+            <div className="flex flex-wrap gap-4 mt-4">
+              <label className="flex items-center space-x-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={advancedFilters.verifiedOnly}
+                  onChange={(e) => setAdvancedFilters(prev => ({ ...prev, verifiedOnly: e.target.checked }))}
+                  className="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                />
+                <span>Verified Only</span>
+              </label>
+              
+              <label className="flex items-center space-x-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={advancedFilters.equipmentProvided}
+                  onChange={(e) => setAdvancedFilters(prev => ({ ...prev, equipmentProvided: e.target.checked }))}
+                  className="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                />
+                <span>Equipment Provided</span>
+              </label>
+            </div>
+            
+            {/* Apply Filters Button */}
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => {
+                  // Apply advanced filters to search
+                  if (searchQuery.trim()) {
+                    performSearch(searchQuery, activeFilter);
+                  } else {
+                    loadTrendingContent();
+                  }
+                }}
+                className="px-4 py-2 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 transition-colors"
+              >
+                Apply Filters
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -297,15 +434,17 @@ export function SearchPage() {
                       <div className="flex items-center space-x-1 px-4 py-2 bg-green-100 text-green-700 rounded-lg">
                         <Check className="w-4 h-4" />
                         <span className="text-sm font-medium">
-                          {activeFilter === 'job' ? 'Applied' : 
-                           activeFilter === 'community' ? 'Joined' : 'Connected'}
+                          {item.category === 'job' ? 'Applied' : 
+                           item.category === 'community' ? 'Joined' : 
+                           item.category === 'match' ? 'Joined' : 'Connected'}
                         </span>
                       </div>
                     ) : (
                       <button 
                         onClick={() => {
-                          const action = activeFilter === 'job' ? 'apply' : 
-                                        activeFilter === 'community' ? 'join' : 'connect';
+                          const action = item.category === 'job' ? 'apply' : 
+                                        item.category === 'community' ? 'join' : 
+                                        item.category === 'match' ? 'join' : 'connect';
                           handleAction(item, action);
                         }}
                         disabled={actionLoading[item.id]}
@@ -315,12 +454,14 @@ export function SearchPage() {
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
                           <>
-                            {activeFilter === 'job' ? <Briefcase className="w-4 h-4" /> :
-                             activeFilter === 'community' ? <Users className="w-4 h-4" /> :
+                            {item.category === 'job' ? <Briefcase className="w-4 h-4" /> :
+                             item.category === 'community' ? <Users className="w-4 h-4" /> :
+                             item.category === 'match' ? <BarChart3 className="w-4 h-4" /> :
                              <UserPlus className="w-4 h-4" />}
                             <span>
-                              {activeFilter === 'job' ? 'Apply' : 
-                               activeFilter === 'community' ? 'Join' : 'Connect'}
+                              {item.category === 'job' ? 'Apply' : 
+                               item.category === 'community' ? 'Join' : 
+                               item.category === 'match' ? 'Join' : 'Connect'}
                             </span>
                           </>
                         )}
