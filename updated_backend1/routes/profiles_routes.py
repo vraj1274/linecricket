@@ -18,8 +18,8 @@ def create_profile():
         page_type_str = data.get('page_type', 'Academy')
         if page_type_str.upper() == 'ACADEMY':
             page_type = 'Academy'
-        elif page_type_str.upper() == 'PITCH':
-            page_type = 'Pitch'
+        elif page_type_str.upper() == 'VENUE PROVIDER' or page_type_str.upper() == 'VENUE':
+            page_type = 'Venue'
         elif page_type_str.upper() == 'COMMUNITY':
             page_type = 'Community'
         else:
@@ -29,12 +29,12 @@ def create_profile():
         if page_type == 'Academy':
             required_fields = ['academy_name', 'academy_type', 'level']
             name_field = 'academy_name'
-        elif page_type == 'Pitch':
-            required_fields = ['academy_name', 'venue_type', 'ground_type']
-            name_field = 'academy_name'
+        elif page_type == 'Venue':
+            required_fields = ['venue_name', 'venue_type', 'ground_type']
+            name_field = 'venue_name'
         elif page_type == 'Community':
-            required_fields = ['academy_name', 'community_type']
-            name_field = 'academy_name'
+            required_fields = ['community_name', 'community_type']
+            name_field = 'community_name'
         else:
             return jsonify({'error': 'Invalid page type'}), 400
         
@@ -44,9 +44,9 @@ def create_profile():
                 return jsonify({'error': f'Missing required field: {field}'}), 400
         
         # Prevent creation of obvious test pages only
-        academy_name = data.get('academy_name', '').lower()
+        page_name = data.get(name_field, '').lower()
         test_patterns = ['test_academy', 'sample_venue', 'demo_community', 'test_page', 'sample_page']
-        if any(pattern in academy_name for pattern in test_patterns):
+        if any(pattern in page_name for pattern in test_patterns):
             return jsonify({'error': 'Cannot create pages with test names'}), 400
         
         # Get user ID (for now using a default UUID, should be from authentication)
@@ -71,7 +71,7 @@ def create_profile():
         profile_page = ProfilePage(
                 user_id=current_user_id,
                 firebase_uid=data.get('firebase_uid'),
-                academy_name=data['academy_name'],
+                academy_name=data.get(name_field, ''),
                 tagline=data.get('tagline'),
                 description=data.get('description'),
                 bio=data.get('bio'),
@@ -90,8 +90,8 @@ def create_profile():
             academy_type=data.get('academy_type', 'Private' if page_type == 'Academy' else None),
             level=data.get('level', 'Beginner' if page_type == 'Academy' else None),
             # Venue-specific fields
-            venue_type=data.get('venue_type') if page_type == 'Pitch' else None,
-            ground_type=data.get('ground_type') if page_type == 'Pitch' else None,
+            venue_type=data.get('venue_type') if page_type == 'Venue' else None,
+            ground_type=data.get('ground_type') if page_type == 'Venue' else None,
             # Community-specific fields
             community_type=data.get('community_type') if page_type == 'Community' else None,
                 established_year=data.get('established_year'),

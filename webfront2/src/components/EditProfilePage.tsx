@@ -28,6 +28,7 @@ export function EditProfilePage({ onBack }: EditProfilePageProps) {
     batting_skill: 0,
     bowling_skill: 0,
     fielding_skill: 0,
+    profile_image_url: '',
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,6 +74,7 @@ export function EditProfilePage({ onBack }: EditProfilePageProps) {
             batting_skill: profileData.batting_skill || 0,
             bowling_skill: profileData.bowling_skill || 0,
             fielding_skill: profileData.fielding_skill || 0,
+            profile_image_url: profileData.profile_image_url || '',
           });
         } else {
           // Fallback to userProfile from context
@@ -90,6 +92,7 @@ export function EditProfilePage({ onBack }: EditProfilePageProps) {
               batting_skill: userProfile.profile?.batting_skill || 0,
               bowling_skill: userProfile.profile?.bowling_skill || 0,
               fielding_skill: userProfile.profile?.fielding_skill || 0,
+              profile_image_url: userProfile.profile?.profile_image_url || '',
             });
           }
         }
@@ -109,6 +112,7 @@ export function EditProfilePage({ onBack }: EditProfilePageProps) {
           batting_skill: 0,
           bowling_skill: 0,
           fielding_skill: 0,
+          profile_image_url: '',
         });
       } finally {
         setLoading(false);
@@ -137,7 +141,7 @@ export function EditProfilePage({ onBack }: EditProfilePageProps) {
     e.preventDefault();
     
     if (!formData.fullName.trim() || !formData.username.trim()) {
-      showError('Please fill in all required fields');
+      showError('Validation Error', 'Please fill in all required fields');
       return;
     }
     
@@ -167,7 +171,7 @@ export function EditProfilePage({ onBack }: EditProfilePageProps) {
       }, 1500);
     } catch (error) {
       console.error('Error updating profile:', error);
-      showError('Failed to update profile. Please try again.');
+      showError('Update Failed', 'Failed to update profile. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -249,8 +253,8 @@ export function EditProfilePage({ onBack }: EditProfilePageProps) {
                   onClick={() => setShowImageUpload(true)}
                   className="text-sm font-medium transition-colors"
                   style={{ color: 'var(--cricket-green)' }}
-                  onMouseEnter={(e) => e.target.style.color = 'var(--cricket-green-hover)'}
-                  onMouseLeave={(e) => e.target.style.color = 'var(--cricket-green)'}
+                  onMouseEnter={(e) => (e.target as HTMLButtonElement).style.color = 'var(--cricket-green-hover)'}
+                  onMouseLeave={(e) => (e.target as HTMLButtonElement).style.color = 'var(--cricket-green)'}
                 >
                   Change Profile Picture
                 </button>
@@ -528,8 +532,8 @@ export function EditProfilePage({ onBack }: EditProfilePageProps) {
               disabled={isSubmitting}
               className="px-6 py-3 text-sm border rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
               style={{ borderColor: 'var(--gray-300)', color: 'var(--scoreboard-gray)' }}
-              onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--gray-50)'}
-              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+              onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--gray-50)'}
+              onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'transparent'}
             >
               Cancel
             </button>
@@ -538,8 +542,8 @@ export function EditProfilePage({ onBack }: EditProfilePageProps) {
               disabled={isSubmitting}
               className="px-8 py-3 text-sm rounded-lg transition-all duration-200 font-medium flex items-center space-x-2 shadow-lg text-white disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: 'var(--cricket-green)' }}
-              onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--cricket-green-hover)'}
-              onMouseLeave={(e) => e.target.style.backgroundColor = 'var(--cricket-green)'}
+              onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--cricket-green-hover)'}
+              onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--cricket-green)'}
             >
               {isSubmitting ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -554,7 +558,7 @@ export function EditProfilePage({ onBack }: EditProfilePageProps) {
         </form>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .slider {
           -webkit-appearance: none;
           appearance: none;

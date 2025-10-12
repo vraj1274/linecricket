@@ -49,7 +49,13 @@ def get_feed():
         # Get current user ID if authenticated
         current_user_id = None
         try:
-            current_user_id = "17c9109e-cb20-4723-be49-c26b8343cd19"  # Using the Firebase user ID from database
+            # Get user ID from Firebase token in Authorization header
+            auth_header = request.headers.get('Authorization')
+            if auth_header and auth_header.startswith('Bearer '):
+                token = auth_header.split(' ')[1]
+                # For now, we'll use a simple approach - in production, verify the Firebase token
+                # and get the user ID from the token payload
+                current_user_id = "17c9109e-cb20-4723-be49-c26b8343cd19"  # This should be extracted from the Firebase token
         except:
             pass  # Not authenticated, show public posts only
         
@@ -191,7 +197,27 @@ def create_post():
         description: Bad request
     """
     try:
-        current_user_id = "17c9109e-cb20-4723-be49-c26b8343cd19"  # Using the Firebase user ID from database
+        # Get current user ID from Firebase token
+        current_user_id = None
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            try:
+                # For development, we'll use a simple approach
+                # In production, verify the Firebase token and extract user ID
+                if token and len(token) > 10:  # Basic token validation
+                    # For now, use a default user ID for development
+                    # TODO: Implement proper Firebase token verification
+                    current_user_id = "17c9109e-cb20-4723-be49-c26b8343cd19"
+                else:
+                    print(f"Invalid token format: {token[:10]}...")
+            except Exception as e:
+                print(f"Token processing error: {e}")
+        
+        if not current_user_id:
+            print("No valid authentication found")
+            return jsonify({'error': 'Authentication required. Please log in again.'}), 401
+            
         data = request.get_json()
         
         if not data or 'content' not in data:
@@ -211,16 +237,29 @@ def create_post():
         else:
             image_url = None
             
-        post = Post(
-            user_id=current_user_id,
-            content=data['content'],
-            image_url=image_url,
-            video_url=data.get('video_url'),
-            location=data.get('location'),
-            post_type=post_type,
-            visibility=data.get('visibility', 'public'),
-            page_id=data.get('page_id')  # Add page_id support
-        )
+        # Create post with page-specific fields
+        post_data = {
+            'user_id': current_user_id,
+            'content': data['content'],
+            'image_url': image_url,
+            'video_url': data.get('video_url'),
+            'location': data.get('location'),
+            'post_type': post_type,
+            'visibility': data.get('visibility', 'public'),
+            'page_id': data.get('page_id')
+        }
+        
+        # Set the appropriate profile_id based on page_type
+        page_type = data.get('page_type')
+        if page_type and data.get('page_id'):
+            if page_type == 'community':
+                post_data['community_profile_id'] = data.get('page_id')
+            elif page_type == 'academy':
+                post_data['academy_profile_id'] = data.get('page_id')
+            elif page_type == 'venue':
+                post_data['venue_profile_id'] = data.get('page_id')
+        
+        post = Post(**post_data)
         
         db.session.add(post)
         db.session.commit()

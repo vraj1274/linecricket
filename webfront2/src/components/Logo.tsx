@@ -34,8 +34,10 @@ function Logo({ size = 'medium', variant = 'light', className = '', iconOnly = f
         className="logo-image"
         onError={(e) => {
           // Fallback to text logo if SVG fails to load
-          e.target.style.display = 'none';
-          e.target.nextSibling.style.display = 'flex';
+          const target = e.target as HTMLImageElement;
+          const nextSibling = target.nextSibling as HTMLElement;
+          target.style.display = 'none';
+          nextSibling.style.display = 'flex';
         }}
       />
       {/* Fallback text logo */}

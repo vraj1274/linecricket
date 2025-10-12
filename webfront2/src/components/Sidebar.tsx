@@ -42,7 +42,13 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
     searchQuery,
     setSearchQuery,
     filteredProfiles,
-    clearSearch
+    clearSearch,
+    filterType,
+    setFilter,
+    sortBy,
+    sortOrder,
+    setSort,
+    clearAllFilters
   } = useProfileSwitch();
 
   // Get appropriate icon for profile type
@@ -176,6 +182,56 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
         }, 1000);
       } else {
         console.log('⚠️ Not enough content to scroll');
+      }
+    }
+  };
+
+  // Scroll functions for profile list
+  const scrollUp = () => {
+    const container = document.querySelector('.profile-switch-container');
+    if (container) {
+      container.scrollBy({ top: -80, behavior: 'smooth' });
+    }
+  };
+
+  const scrollDown = () => {
+    const container = document.querySelector('.profile-switch-container');
+    if (container) {
+      container.scrollBy({ top: 80, behavior: 'smooth' });
+    }
+  };
+
+  // Handle scroll events to update scroll state
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const container = e.currentTarget;
+    const scrollTop = container.scrollTop;
+    const scrollHeight = container.scrollHeight;
+    const clientHeight = container.clientHeight;
+    
+    setScrollPosition(scrollTop);
+    setCanScrollUp(scrollTop > 0);
+    setCanScrollDown(scrollTop < scrollHeight - clientHeight);
+  };
+
+  // Handle keyboard navigation
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'ArrowUp' && canScrollUp) {
+      e.preventDefault();
+      scrollUp();
+    } else if (e.key === 'ArrowDown' && canScrollDown) {
+      e.preventDefault();
+      scrollDown();
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      const container = document.querySelector('.profile-switch-container');
+      if (container) {
+        container.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      const container = document.querySelector('.profile-switch-container');
+      if (container) {
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
       }
     }
   };
@@ -367,31 +423,62 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
               </p>
             </div>
             
-            <div className="max-h-64 overflow-y-auto profile-switch-scrollbar profile-list-scrollbar profile-switch-container relative">
-              {/* Debug Info */}
-              <div className="px-4 py-2 bg-yellow-50 border-b border-yellow-200 text-xs text-yellow-800">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <strong>SCROLLBAR DEBUG:</strong> Pages: {availableProfiles.length} | Max Height: 16rem (256px) | Overflow: auto
-                  </div>
+            <div 
+              className="max-h-64 overflow-y-auto profile-switch-scrollbar profile-list-scrollbar profile-switch-container relative scrollbar-thin scrollbar-thumb-blue-500 scrollbar-track-blue-100"
+              onScroll={handleScroll}
+              onKeyDown={handleKeyDown}
+              tabIndex={0}
+              style={{
+                scrollbarWidth: 'auto',
+                scrollbarColor: '#3b82f6 #e0f2fe'
+              }}
+            >
+              {/* Scroll Controls */}
+              {availableProfiles.length > 3 && (
+                <div className="absolute right-2 top-2 z-20 flex flex-col space-y-1">
                   <button
-                    onClick={testScrollbar}
-                    className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
+                    onClick={() => scrollUp()}
+                    disabled={!canScrollUp}
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs transition-all duration-200 ${
+                      canScrollUp 
+                        ? 'bg-blue-500 text-white hover:bg-blue-600 shadow-md' 
+                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    }`}
+                    title="Scroll Up"
                   >
-                    Test Scroll
+                    ↑
+                  </button>
+                  <button
+                    onClick={() => scrollDown()}
+                    disabled={!canScrollDown}
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs transition-all duration-200 ${
+                      canScrollDown 
+                        ? 'bg-blue-500 text-white hover:bg-blue-600 shadow-md' 
+                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    }`}
+                    title="Scroll Down"
+                  >
+                    ↓
                   </button>
                 </div>
-              </div>
+              )}
               
-              {/* Scroll Progress Indicator */}
+              {/* Enhanced Scroll Progress Indicator */}
               {availableProfiles.length > 3 && (
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gray-200 z-10">
+                <div className="absolute top-0 left-0 right-0 h-2 bg-gray-200 z-10 rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300 ease-out"
+                    className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 transition-all duration-300 ease-out rounded-full"
                     style={{ 
                       width: `${Math.min(100, (scrollPosition / 200) * 100)}%` 
                     }}
                   ></div>
+                </div>
+              )}
+              
+              {/* Scrollbar Status Indicator */}
+              {availableProfiles.length > 3 && (
+                <div className="absolute top-8 right-2 z-15 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 text-xs text-gray-600 shadow-sm">
+                  {canScrollUp ? '↑' : ''} {canScrollDown ? '↓' : ''}
                 </div>
               )}
               
@@ -405,9 +492,10 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
                 </>
               )}
               
-              {/* Search Input */}
+              {/* Enhanced Search and Filter Controls */}
               {availableProfiles.length > 1 && (
-                <div className="px-4 py-2 border-b border-gray-100">
+                <div className="px-4 py-3 border-b border-gray-100 space-y-3">
+                  {/* Search Input */}
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
@@ -425,6 +513,59 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
                         ×
                       </button>
                     )}
+                  </div>
+                  
+                  {/* Filter Controls */}
+                  <div className="flex space-x-2">
+                    {/* Type Filter */}
+                    <select
+                      value={filterType}
+                      onChange={(e) => setFilter(e.target.value)}
+                      className="flex-1 px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="all">All Types</option>
+                      <option value="player">Players</option>
+                      <option value="coach">Coaches</option>
+                      <option value="academy">Academies</option>
+                      <option value="venue">Venues</option>
+                      <option value="community">Communities</option>
+                    </select>
+                    
+                    {/* Sort By */}
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSort(e.target.value, sortOrder)}
+                      className="flex-1 px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="name">Name</option>
+                      <option value="type">Type</option>
+                      <option value="created">Created</option>
+                      <option value="active">Active</option>
+                    </select>
+                    
+                    {/* Sort Order */}
+                    <button
+                      onClick={() => setSort(sortBy, sortOrder === 'asc' ? 'desc' : 'asc')}
+                      className="px-3 py-2 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      title={`Sort ${sortOrder === 'asc' ? 'Descending' : 'Ascending'}`}
+                    >
+                      {sortOrder === 'asc' ? '↑' : '↓'}
+                    </button>
+                  </div>
+                  
+                  {/* Clear All Filters */}
+                  {(searchQuery || filterType !== 'all' || sortBy !== 'name' || sortOrder !== 'asc') && (
+                    <button
+                      onClick={clearAllFilters}
+                      className="w-full px-3 py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors"
+                    >
+                      Clear All Filters
+                    </button>
+                  )}
+                  
+                  {/* Results Count */}
+                  <div className="text-xs text-gray-500 text-center">
+                    Showing {filteredProfiles.length} of {availableProfiles.length} profiles
                   </div>
                 </div>
               )}
@@ -479,6 +620,32 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
                   <strong>TEST SCROLLBAR:</strong> This content should make the container scrollable
                 </p>
               </div>
+              
+              {/* Filter Status Indicator */}
+              {(searchQuery || filterType !== 'all' || sortBy !== 'name' || sortOrder !== 'asc') && (
+                <div className="px-4 py-2 bg-blue-50 border-b border-blue-200">
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-blue-700 font-medium">Active Filters:</span>
+                      {searchQuery && (
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
+                          Search: "{searchQuery}"
+                        </span>
+                      )}
+                      {filterType !== 'all' && (
+                        <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full">
+                          Type: {filterType}
+                        </span>
+                      )}
+                      {sortBy !== 'name' && (
+                        <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full">
+                          Sort: {sortBy} {sortOrder}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
               
               {/* Available Profiles from Context */}
               {filteredProfiles.length > 0 ? (
@@ -564,7 +731,19 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
                 <div className="px-4 py-8 text-center">
                   <Search className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                   <p className="text-sm text-gray-500">No profiles found</p>
-                  <p className="text-xs text-gray-400 mt-1">Try adjusting your search</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {searchQuery ? `No profiles match "${searchQuery}"` : 
+                     filterType !== 'all' ? `No ${filterType} profiles found` : 
+                     'Try adjusting your search or filters'}
+                  </p>
+                  {(searchQuery || filterType !== 'all') && (
+                    <button
+                      onClick={clearAllFilters}
+                      className="mt-3 px-4 py-2 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                    >
+                      Clear All Filters
+                    </button>
+                  )}
                 </div>
               )}
               

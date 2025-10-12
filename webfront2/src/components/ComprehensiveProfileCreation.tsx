@@ -302,7 +302,7 @@ export function ComprehensiveProfileCreation({ onBack, onProfileTypeSelect, sele
       if (selectedType === 'academy') {
         profileData.academy_name = formData.academy_name || getProfileName(selectedType, formData);
       } else if (selectedType === 'venue') {
-        profileData.academy_name = formData.venue_name || getProfileName(selectedType, formData);
+        profileData.venue_name = formData.venue_name || getProfileName(selectedType, formData);
         // Map venue-specific fields
         profileData.venue_type = formData.venue_type;
         profileData.ground_type = formData.ground_type;
@@ -447,7 +447,7 @@ export function ComprehensiveProfileCreation({ onBack, onProfileTypeSelect, sele
       case 'academy':
         return 'Academy';
       case 'venue':
-        return 'Pitch';
+        return 'Venue Provider';
       case 'community':
         return 'Community';
       default:

@@ -953,6 +953,8 @@ class ApiService {
     location?: string;
     post_type?: string;
     visibility?: string;
+    page_id?: string;
+    page_type?: string;
   }) {
     console.log('🚀 Creating social post:', postData);
     console.log('📡 API URL:', `${API_BASE_URL}/api/posts`);

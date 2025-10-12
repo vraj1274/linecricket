@@ -37,6 +37,13 @@ interface ProfileSwitchContextType {
   setSearchQuery: (query: string) => void;
   filteredProfiles: UserProfile[];
   clearSearch: () => void;
+  // Enhanced filter features
+  filterType: string;
+  setFilter: (type: string) => void;
+  sortBy: string;
+  sortOrder: 'asc' | 'desc';
+  setSort: (field: string, order?: 'asc' | 'desc') => void;
+  clearAllFilters: () => void;
 }
 
 const ProfileSwitchContext = createContext<ProfileSwitchContextType | undefined>(undefined);
@@ -55,6 +62,9 @@ export function ProfileSwitchProvider({ children }: ProfileSwitchProviderProps) 
   const [canScrollUp, setCanScrollUp] = useState(false);
   const [canScrollDown, setCanScrollDown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<string>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const { user } = useFirebase();
 
   // Helper function to get profile color based on type
@@ -517,15 +527,62 @@ export function ProfileSwitchProvider({ children }: ProfileSwitchProviderProps) 
     }
   };
 
-  // Search/filter functionality
-  const filteredProfiles = availableProfiles.filter(profile => 
-    profile.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    profile.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    profile.type.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Enhanced search/filter functionality
+  const filteredProfiles = availableProfiles
+    .filter(profile => {
+      // Text search
+      const matchesSearch = !searchQuery || 
+        profile.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        profile.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        profile.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (profile.email && profile.email.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      // Type filter
+      const matchesType = filterType === 'all' || profile.type === filterType;
+      
+      return matchesSearch && matchesType;
+    })
+    .sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortBy) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case 'type':
+          comparison = a.type.localeCompare(b.type);
+          break;
+        case 'created':
+          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          break;
+        case 'active':
+          comparison = (a.isActive ? 1 : 0) - (b.isActive ? 1 : 0);
+          break;
+        default:
+          comparison = a.name.localeCompare(b.name);
+      }
+      
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
 
   const clearSearch = () => {
     setSearchQuery('');
+  };
+
+  const clearAllFilters = () => {
+    setSearchQuery('');
+    setFilterType('all');
+    setSortBy('name');
+    setSortOrder('asc');
+  };
+
+  const setFilter = (type: string) => {
+    setFilterType(type);
+  };
+
+  const setSort = (field: string, order: 'asc' | 'desc' = 'asc') => {
+    setSortBy(field);
+    setSortOrder(order);
   };
 
   const value: ProfileSwitchContextType = {
@@ -549,7 +606,14 @@ export function ProfileSwitchProvider({ children }: ProfileSwitchProviderProps) 
     searchQuery,
     setSearchQuery,
     filteredProfiles,
-    clearSearch
+    clearSearch,
+    // Enhanced filter features
+    filterType,
+    setFilter,
+    sortBy,
+    sortOrder,
+    setSort,
+    clearAllFilters
   };
 
   return (

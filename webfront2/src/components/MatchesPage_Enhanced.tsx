@@ -2,14 +2,52 @@ import { DollarSign, MapPin, Plus, Trophy, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { apiService } from '../services/api';
 
+interface Match {
+  id: number;
+  title: string;
+  description?: string;
+  match_date: string;
+  match_time: string;
+  status: 'upcoming' | 'live' | 'completed';
+  match_type: 'tournament' | 'friendly' | 'league';
+  location: string;
+  skill_level: string;
+  entry_fee: number;
+  participants_count: number;
+  players_needed: number;
+  is_participant: boolean;
+  can_join: boolean;
+  team1_name?: string;
+  team2_name?: string;
+  team1_score?: string;
+  team2_score?: string;
+  current_over?: number;
+  weather?: string;
+  temperature?: string;
+  humidity?: string;
+  creator: {
+    username: string;
+  };
+  equipment_provided: boolean;
+  over?: string;
+  team1?: {
+    name: string;
+    score: string;
+  };
+  team2?: {
+    name: string;
+    score: string;
+  };
+}
+
 interface MatchesPageProps {
   onCreateMatch: () => void;
   refreshTrigger?: number;
 }
 
 export function MatchesPage({ onCreateMatch, refreshTrigger }: MatchesPageProps) {
-  const [matches, setMatches] = useState([]);
-  const [liveMatches, setLiveMatches] = useState([]);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [liveMatches, setLiveMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('upcoming');
   const [filterType, setFilterType] = useState('all');
@@ -60,8 +98,8 @@ export function MatchesPage({ onCreateMatch, refreshTrigger }: MatchesPageProps)
     } catch (error) {
       console.error('❌ Error loading matches:', error);
       console.error('Error details:', {
-        message: error.message,
-        stack: error.stack
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
       });
       setMatches([]);
     } finally {
@@ -222,11 +260,11 @@ export function MatchesPage({ onCreateMatch, refreshTrigger }: MatchesPageProps)
                         className="w-12 h-12 rounded-full flex items-center justify-center text-white text-sm"
                         style={{ background: 'linear-gradient(to bottom right, #FF6B33, #2E4B5F)' }}
                       >
-                        {match.team1.name.substring(0, 3).toUpperCase()}
+                        {match.team1?.name?.substring(0, 3).toUpperCase() || 'T1'}
                       </div>
-                      <span className="text-lg">{match.team1.name}</span>
+                      <span className="text-lg">{match.team1?.name || 'Team 1'}</span>
                     </div>
-                    <span className="text-2xl">{match.team1.score}</span>
+                    <span className="text-2xl">{match.team1?.score || '0'}</span>
                   </div>
                   <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                     <div className="flex items-center space-x-4">
@@ -234,11 +272,11 @@ export function MatchesPage({ onCreateMatch, refreshTrigger }: MatchesPageProps)
                         className="w-12 h-12 rounded-full flex items-center justify-center text-white text-sm"
                         style={{ background: 'linear-gradient(to bottom right, #2E4B5F, #5D798E)' }}
                       >
-                        {match.team2.name.substring(0, 3).toUpperCase()}
+                        {match.team2?.name?.substring(0, 3).toUpperCase() || 'T2'}
                       </div>
-                      <span className="text-lg">{match.team2.name}</span>
+                      <span className="text-lg">{match.team2?.name || 'Team 2'}</span>
                     </div>
-                    <span className="text-2xl">{match.team2.score}</span>
+                    <span className="text-2xl">{match.team2?.score || '0'}</span>
                   </div>
                 </div>
                 <p className="text-green-600 mt-4 text-center">{match.description}</p>
