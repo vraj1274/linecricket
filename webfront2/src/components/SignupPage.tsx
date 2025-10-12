@@ -161,29 +161,29 @@ export function SignupPage({ onSignup, onSwitchToLogin }: SignupPageProps) {
         <div 
           className="rounded-2xl p-8 bg-white/80 backdrop-blur-lg border border-white/40 shadow-xl hover:shadow-2xl transition-all duration-300"
         >
-          <form onSubmit={handleSubmit} className="space-y-10">
+          <form onSubmit={handleSubmit} className="space-y-8">
             {/* Full Name Input */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <input 
                 type="text" 
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleInputChange}
                 required 
-                className="w-full px-4 py-3 border-2 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-4 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-200 hover:bg-white/90 border-gray-200 focus:ring-orange-200 hover:border-orange-300"
+                className="w-full px-4 py-4 border-2 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-4 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-200 hover:bg-white/90 border-gray-200 focus:ring-orange-200 hover:border-orange-300"
                 placeholder="Enter your full name"
               />
             </div>
 
             {/* Email Input */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <input 
                 type="email" 
                 name="email"
                 value={formData.email}
                 onChange={handleInputChange}
                 required 
-                className={`w-full px-4 py-3 border-2 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-4 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-200 hover:bg-white/90 ${
+                className={`w-full px-4 py-4 border-2 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-4 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-200 hover:bg-white/90 ${
                   errors.email 
                     ? 'border-red-400 focus:ring-red-200 hover:border-red-500' 
                     : 'border-gray-200 focus:ring-orange-200 hover:border-orange-300'
@@ -196,7 +196,7 @@ export function SignupPage({ onSignup, onSwitchToLogin }: SignupPageProps) {
             </div>
             
             {/* Password Input */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="relative">
                 <input 
                   type={showPassword ? 'text' : 'password'}
@@ -204,7 +204,7 @@ export function SignupPage({ onSignup, onSwitchToLogin }: SignupPageProps) {
                   value={formData.password}
                   onChange={handleInputChange}
                   required 
-                  className={`w-full px-4 py-3 border-2 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-4 focus:border-transparent pr-12 bg-white/70 backdrop-blur-sm transition-all duration-200 hover:bg-white/90 ${
+                  className={`w-full px-4 py-4 border-2 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-4 focus:border-transparent pr-12 bg-white/70 backdrop-blur-sm transition-all duration-200 hover:bg-white/90 ${
                     errors.password 
                       ? 'border-red-400 focus:ring-red-200 hover:border-red-500' 
                       : 'border-gray-200 focus:ring-orange-200 hover:border-orange-300'
@@ -225,7 +225,7 @@ export function SignupPage({ onSignup, onSwitchToLogin }: SignupPageProps) {
             </div>
 
             {/* Confirm Password Input */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="relative">
                 <input 
                   type={showConfirmPassword ? 'text' : 'password'}
@@ -233,7 +233,7 @@ export function SignupPage({ onSignup, onSwitchToLogin }: SignupPageProps) {
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
                   required 
-                  className={`w-full px-4 py-3 border-2 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-4 focus:border-transparent pr-12 bg-white/70 backdrop-blur-sm transition-all duration-200 hover:bg-white/90 ${
+                  className={`w-full px-4 py-4 border-2 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-4 focus:border-transparent pr-12 bg-white/70 backdrop-blur-sm transition-all duration-200 hover:bg-white/90 ${
                     errors.confirmPassword 
                       ? 'border-red-400 focus:ring-red-200 hover:border-red-500' 
                       : 'border-gray-200 focus:ring-orange-200 hover:border-orange-300'

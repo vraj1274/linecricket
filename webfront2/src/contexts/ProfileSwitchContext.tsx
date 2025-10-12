@@ -2,6 +2,7 @@ import { createContext, ReactNode, useContext, useState, useEffect } from 'react
 import { useFirebase } from './FirebaseContext';
 import { profileManagementService, ProfileData } from '../services/profileManagementService';
 import { profileSwitchService, UserProfile as SwitchUserProfile } from '../services/profileSwitchService';
+import { searchService, SearchProfile } from '../services/searchService';
 
 export interface UserProfile {
   id: number | string;
@@ -44,6 +45,9 @@ interface ProfileSwitchContextType {
   sortOrder: 'asc' | 'desc';
   setSort: (field: string, order?: 'asc' | 'desc') => void;
   clearAllFilters: () => void;
+  // PostgreSQL search features
+  searchLoading: boolean;
+  searchError: string | null;
 }
 
 const ProfileSwitchContext = createContext<ProfileSwitchContextType | undefined>(undefined);
@@ -376,7 +380,7 @@ export function ProfileSwitchProvider({ children }: ProfileSwitchProviderProps) 
         setLoading(true);
         setError(null);
 
-        const apiUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/profiles/${profileId}`;
+        const apiUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/profiles/${profileId}`;
         console.log('🌐 API URL:', apiUrl);
 
         // Call the delete API
@@ -527,43 +531,64 @@ export function ProfileSwitchProvider({ children }: ProfileSwitchProviderProps) 
     }
   };
 
-  // Enhanced search/filter functionality
-  const filteredProfiles = availableProfiles
-    .filter(profile => {
-      // Text search
-      const matchesSearch = !searchQuery || 
-        profile.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        profile.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        profile.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (profile.email && profile.email.toLowerCase().includes(searchQuery.toLowerCase()));
-      
-      // Type filter
-      const matchesType = filterType === 'all' || profile.type === filterType;
-      
-      return matchesSearch && matchesType;
-    })
-    .sort((a, b) => {
-      let comparison = 0;
-      
-      switch (sortBy) {
-        case 'name':
-          comparison = a.name.localeCompare(b.name);
-          break;
-        case 'type':
-          comparison = a.type.localeCompare(b.type);
-          break;
-        case 'created':
-          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-          break;
-        case 'active':
-          comparison = (a.isActive ? 1 : 0) - (b.isActive ? 1 : 0);
-          break;
-        default:
-          comparison = a.name.localeCompare(b.name);
+  // PostgreSQL-powered search functionality
+  const [filteredProfiles, setFilteredProfiles] = useState<UserProfile[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+
+  // Search profiles using PostgreSQL
+  useEffect(() => {
+    const searchProfiles = async () => {
+      if (!searchQuery && filterType === 'all' && sortBy === 'name' && sortOrder === 'asc') {
+        // No filters applied, show all profiles
+        setFilteredProfiles(availableProfiles);
+        return;
       }
-      
-      return sortOrder === 'asc' ? comparison : -comparison;
-    });
+
+      setSearchLoading(true);
+      setSearchError(null);
+
+      try {
+        const result = await searchService.searchProfiles({
+          query: searchQuery || undefined,
+          type: filterType !== 'all' ? filterType : undefined,
+          sort: sortBy,
+          order: sortOrder,
+          page: 1,
+          per_page: 100 // Get more results for better UX
+        });
+
+        if (result.success) {
+          // Convert SearchProfile to UserProfile format
+          const convertedProfiles: UserProfile[] = result.data.map((searchProfile: SearchProfile) => ({
+            id: searchProfile.id,
+            type: searchProfile.type as any,
+            name: searchProfile.name,
+            username: searchProfile.name.toLowerCase().replace(/\s+/g, '_'),
+            email: '',
+            avatar: '',
+            isActive: true,
+            createdAt: searchProfile.created_at,
+            updatedAt: searchProfile.updated_at,
+            profile: null
+          }));
+
+          setFilteredProfiles(convertedProfiles);
+        } else {
+          setSearchError('Search failed');
+          setFilteredProfiles(availableProfiles);
+        }
+      } catch (error) {
+        console.error('Search error:', error);
+        setSearchError('Search failed');
+        setFilteredProfiles(availableProfiles);
+      } finally {
+        setSearchLoading(false);
+      }
+    };
+
+    searchProfiles();
+  }, [searchQuery, filterType, sortBy, sortOrder, availableProfiles]);
 
   const clearSearch = () => {
     setSearchQuery('');
@@ -613,7 +638,10 @@ export function ProfileSwitchProvider({ children }: ProfileSwitchProviderProps) 
     sortBy,
     sortOrder,
     setSort,
-    clearAllFilters
+    clearAllFilters,
+    // PostgreSQL search features
+    searchLoading,
+    searchError
   };
 
   return (

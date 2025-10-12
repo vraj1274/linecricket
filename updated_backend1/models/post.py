@@ -118,10 +118,11 @@ class Post(BaseModel):
             page_profile = ProfilePage.query.get(page_id)
             
             if page_profile:
-                page_initials = page_profile.name[:2].upper() if page_profile.name else 'P'
+                page_name = page_profile.academy_name or 'Unknown Page'
+                page_initials = page_name[:2].upper() if page_name else 'P'
                 data['author'] = {
                     'id': str(page_id),
-                    'username': page_profile.name or 'Unknown Page',
+                    'username': page_name,
                     'initials': page_initials,
                     'type': page_type,
                     'profile': page_profile.to_dict() if page_profile else None

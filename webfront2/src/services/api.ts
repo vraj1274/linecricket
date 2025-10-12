@@ -289,6 +289,20 @@ class ApiService {
     return this.handleResponse(response);
   }
 
+  async getPostsByUser(userId: string, page = 1, perPage = 10) {
+    const response = await this.makeRequest(`${API_BASE_URL}/api/posts?user_id=${userId}&page=${page}&per_page=${perPage}`, {
+      method: 'GET'
+    });
+    return this.handleResponse(response);
+  }
+
+  async getPostsByPage(pageId: string, page = 1, perPage = 10) {
+    const response = await this.makeRequest(`${API_BASE_URL}/api/posts?page_id=${pageId}&page=${page}&per_page=${perPage}`, {
+      method: 'GET'
+    });
+    return this.handleResponse(response);
+  }
+
   async likePost(postId: string) {
     const response = await this.makeRequest(`${API_BASE_URL}/api/posts/${postId}/like`, {
       method: 'POST'

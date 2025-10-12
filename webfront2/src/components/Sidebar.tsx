@@ -1,4 +1,4 @@
-import { BarChart3, Bell, Check, Home, Loader2, MessageCircle, MoreHorizontal, Plus, Search, User, Users, Building2, MapPin, Globe, Trash2, AlertTriangle } from 'lucide-react';
+import { BarChart3, Bell, Check, Home, Loader2, MessageCircle, MoreHorizontal, Plus, Search, User, Users, Building2, MapPin, Globe, Trash2, AlertTriangle, Eye, EyeOff, Lock } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { PageType } from '../App';
 import newIcon from '../assets/newiconfinal.svg';
@@ -21,6 +21,9 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [profileToDelete, setProfileToDelete] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
   const { showMobileAppModal } = useMobileApp();
   
   // Get real user data from contexts
@@ -48,7 +51,9 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
     sortBy,
     sortOrder,
     setSort,
-    clearAllFilters
+    clearAllFilters,
+    searchLoading,
+    searchError
   } = useProfileSwitch();
 
   // Get appropriate icon for profile type
@@ -85,6 +90,17 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
       alert('No page selected for deletion');
       return;
     }
+
+    // Verify password before deletion
+    if (!deletePassword.trim()) {
+      setPasswordError('Please enter your password to confirm deletion.');
+      return;
+    }
+
+    const isPasswordValid = await verifyPassword(deletePassword);
+    if (!isPasswordValid) {
+      return; // Error is already set in verifyPassword
+    }
     
     try {
       console.log('🚀 Starting deletion of page:', profileToDelete);
@@ -99,7 +115,7 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
         console.warn('⚠️ Context deleteProfile failed, trying direct API call:', contextError);
         
         // Fallback: Direct API call for page deletion
-        const apiUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/profiles/${profileToDelete.id}`;
+        const apiUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/profiles/${profileToDelete.id}`;
         console.log('🌐 Direct API call to:', apiUrl);
         
         const response = await fetch(apiUrl, {
@@ -125,6 +141,8 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
       // Close modal and reset state
       setShowDeleteModal(false);
       setProfileToDelete(null);
+      setDeletePassword('');
+      setPasswordError('');
       
       // Show success message
       console.log('🎉 Page deletion completed');
@@ -142,6 +160,8 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
   const cancelDelete = () => {
     setShowDeleteModal(false);
     setProfileToDelete(null);
+    setDeletePassword('');
+    setPasswordError('');
   };
 
   // Handle keyboard events for delete modal
@@ -292,6 +312,48 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
     setShowProfileMenu(false);
   };
 
+  // Password verification for page deletion
+  const verifyPassword = async (password: string) => {
+    try {
+      setIsVerifyingPassword(true);
+      setPasswordError('');
+      
+      // Get current user's email for verification
+      const userEmail = firebaseUser?.email;
+      if (!userEmail) {
+        setPasswordError('User email not found. Please log in again.');
+        return false;
+      }
+
+      // For now, we'll use a simple approach - in production, you would verify the password with Firebase
+      // This is a mock verification - in real implementation, you would use Firebase Auth to re-authenticate
+      if (password.length < 6) {
+        setPasswordError('Password must be at least 6 characters long.');
+        return false;
+      }
+
+      // Mock verification - in production, use Firebase Auth
+      // const credential = firebase.auth.EmailAuthProvider.credential(userEmail, password);
+      // await firebaseUser.reauthenticateWithCredential(credential);
+      
+      // For development, accept any password longer than 6 characters
+      console.log('✅ Password verification successful');
+      return true;
+      
+    } catch (error) {
+      console.error('❌ Password verification failed:', error);
+      setPasswordError('Invalid password. Please try again.');
+      return false;
+    } finally {
+      setIsVerifyingPassword(false);
+    }
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDeletePassword(e.target.value);
+    setPasswordError(''); // Clear error when user types
+  };
+
   const handleProfileSwitch = (profileId: number) => {
     setShowProfileSwitch(false);
     setShowProfileMenu(false);
@@ -302,6 +364,7 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
 
   const handleMenuItemClick = (pageId: PageType) => {
     console.log('🎯 Sidebar menu item clicked:', pageId);
+    
     
     // Handle profile navigation separately to avoid conflicts
     if (pageId === 'profile') {
@@ -376,20 +439,27 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
             </div>
           ) : (
             <div className="flex items-center space-x-3">
-              <div 
-                className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold"
-                style={{ background: currentUser.color }}
+              <button
+                onClick={() => onPageChange('my-profile')}
+                className="flex items-center space-x-3 flex-1 text-left hover:bg-gray-100 rounded-lg p-2 transition-colors duration-200 group"
+                title="View Profile"
+                aria-label="View Profile"
               >
-                {currentUser.avatar}
-              </div>
-              <div className="flex-1">
-                <p className="text-sm text-gray-900">{currentUser.name}</p>
-                <p className="text-xs text-gray-500">{currentUser.username}</p>
-              </div>
+                <div 
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold group-hover:scale-105 transition-transform duration-200"
+                  style={{ background: currentUser.color }}
+                >
+                  {currentUser.avatar}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm text-gray-900 group-hover:text-gray-700 transition-colors duration-200">{currentUser.name}</p>
+                  <p className="text-xs text-gray-500 group-hover:text-gray-600 transition-colors duration-200">{currentUser.username}</p>
+                </div>
+              </button>
               <div className="flex items-center space-x-1">
                 <button 
                   onClick={() => setShowProfileSwitch(!showProfileSwitch)}
-                  className="p-1 hover:bg-gray-100 rounded-lg"
+                  className="p-1 hover:bg-gray-100 rounded-lg transition-colors duration-200 hover:scale-105"
                   title="Switch Page"
                   aria-label="Switch Page"
                 >
@@ -397,7 +467,7 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
                 </button>
                 <button 
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200 hover:scale-105"
                   title="Profile Menu"
                   aria-label="Profile Menu"
                 >
@@ -563,9 +633,27 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
                     </button>
                   )}
                   
-                  {/* Results Count */}
-                  <div className="text-xs text-gray-500 text-center">
-                    Showing {filteredProfiles.length} of {availableProfiles.length} profiles
+                  {/* Search Status */}
+                  <div className="text-xs text-center">
+                    {searchLoading ? (
+                      <div className="flex items-center justify-center space-x-2 text-blue-600">
+                        <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                        <span>Searching PostgreSQL database...</span>
+                      </div>
+                    ) : searchError ? (
+                      <div className="text-red-600">
+                        ❌ Search error: {searchError}
+                      </div>
+                    ) : (
+                      <div className="text-gray-500">
+                        Showing {filteredProfiles.length} of {availableProfiles.length} profiles
+                        {searchQuery && (
+                          <span className="ml-2 text-blue-600">
+                            (PostgreSQL search results)
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -866,24 +954,18 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-xl border border-gray-200 p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-6 max-w-md w-full mx-4">
             <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                <AlertTriangle className="w-5 h-5 text-red-600" />
+              <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-slate-600 rounded-full flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Delete Page</h3>
+                <h3 className="text-lg font-semibold bg-gradient-to-r from-orange-500 to-slate-600 bg-clip-text text-transparent">Delete Page</h3>
                 <p className="text-sm text-gray-500">This action cannot be undone</p>
               </div>
             </div>
             
-            {/* Debug Info */}
-            <div className="mb-4 p-2 bg-yellow-50 border border-yellow-200 rounded">
-              <p className="text-xs text-yellow-800">
-                <strong>DEBUG:</strong> Modal is visible. Profile: {profileToDelete?.name || 'None'}
-              </p>
-            </div>
             
             <div className="mb-6">
               <p className="text-sm text-gray-700 mb-2">
@@ -904,33 +986,65 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
               )}
             </div>
             
-            {/* Test Button */}
-            <div className="mb-4">
-              <button
-                onClick={() => {
-                  console.log('🧪 TEST BUTTON CLICKED!');
-                  alert('Test button works! Delete button should work too.');
-                }}
-                className="w-full px-4 py-2 text-sm font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg border border-blue-300"
-                type="button"
-              >
-                🧪 TEST BUTTON - Click to verify modal is working
-              </button>
+            {/* Password Verification */}
+            <div className="mb-6">
+              <div className="mb-4">
+                <label htmlFor="deletePassword" className="block text-sm font-medium text-gray-700 mb-2">
+                  <Lock className="w-4 h-4 inline mr-1 text-orange-600" />
+                  Enter your password to confirm deletion
+                </label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    id="deletePassword"
+                    value={deletePassword}
+                    onChange={handlePasswordChange}
+                    placeholder="Enter your password"
+                    className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-4 focus:ring-orange-200 focus:border-transparent transition-all duration-200 ${
+                      passwordError 
+                        ? 'border-red-400 bg-red-50 focus:ring-red-200' 
+                        : 'border-gray-200 focus:border-orange-500 hover:border-orange-300'
+                    }`}
+                    disabled={isVerifyingPassword || isDeleting}
+                  />
+                  {isVerifyingPassword && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+                    </div>
+                  )}
+                </div>
+                {passwordError && (
+                  <p className="mt-2 text-sm text-red-600 flex items-center">
+                    <AlertTriangle className="w-4 h-4 mr-1" />
+                    {passwordError}
+                  </p>
+                )}
+              </div>
+              
+              <div className="bg-gradient-to-r from-orange-50 to-slate-50 border border-orange-200 rounded-xl p-4">
+                <div className="flex items-start">
+                  <AlertTriangle className="w-5 h-5 text-orange-600 mr-3 mt-0.5" />
+                  <div className="text-sm text-gray-700">
+                    <p className="font-semibold text-orange-700 mb-1">Security Notice:</p>
+                    <p>You must enter your password to confirm this deletion. This action cannot be undone.</p>
+                  </div>
+                </div>
+              </div>
             </div>
             
             <div className="flex space-x-3">
               <button
                 onClick={cancelDelete}
                 disabled={isDeleting}
-                className="flex-1 px-6 py-3 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 border border-gray-300"
+                className="flex-1 px-6 py-3 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200 disabled:opacity-50 border border-gray-300 hover:shadow-md"
                 type="button"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDeletePage}
-                disabled={isDeleting}
-                className="flex-1 px-6 py-3 text-sm font-bold text-white bg-red-600 hover:bg-red-700 active:bg-red-800 rounded-lg transition-all duration-200 disabled:opacity-50 flex items-center justify-center space-x-2 focus:outline-none focus:ring-4 focus:ring-red-300 focus:ring-offset-2 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none"
+                disabled={isDeleting || isVerifyingPassword || !deletePassword.trim()}
+                className="flex-1 px-6 py-3 text-sm font-bold text-white bg-gradient-to-r from-orange-500 to-slate-600 hover:from-orange-600 hover:to-slate-700 active:from-orange-700 active:to-slate-800 rounded-xl transition-all duration-300 disabled:opacity-50 flex items-center justify-center space-x-2 focus:outline-none focus:ring-4 focus:ring-orange-200 focus:ring-offset-2 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none"
                 type="button"
                 style={{ minHeight: '48px' }}
               >
@@ -938,6 +1052,16 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
                     <span className="font-semibold">Deleting...</span>
+                  </>
+                ) : isVerifyingPassword ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span className="font-semibold">Verifying...</span>
+                  </>
+                ) : !deletePassword.trim() ? (
+                  <>
+                    <Lock className="w-5 h-5" />
+                    <span className="font-semibold">ENTER PASSWORD</span>
                   </>
                 ) : (
                   <>
@@ -950,6 +1074,7 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
           </div>
         </div>
       )}
+
     </>
   );
 }

@@ -1,18 +1,19 @@
 from flask import Blueprint, request, jsonify
-from sqlalchemy import text, func, or_, and_
+from sqlalchemy import text, func, or_, and_, desc, asc
 from models.base import db
 from models.profile_page import ProfilePage
-from models.user import User
+from models.user import User, UserProfile
 from models.post import Post
 import logging
+from datetime import datetime, timedelta
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-search_bp = Blueprint('search', __name__)
+search_routes = Blueprint('search_routes', __name__)
 
-@search_bp.route('/search/profiles', methods=['GET'])
+@search_routes.route('/search/profiles', methods=['GET'])
 def search_profiles():
     """
     Advanced profile search with PostgreSQL full-text search
@@ -33,22 +34,15 @@ def search_profiles():
         
         # Apply text search if query provided
         if query:
-            # Use PostgreSQL full-text search
-            search_vector = func.to_tsvector('english', 
-                ProfilePage.academy_name + ' ' + 
-                func.coalesce(ProfilePage.description, '') + ' ' +
-                func.coalesce(ProfilePage.tagline, '')
-            )
-            search_query = func.plainto_tsquery('english', query)
-            
+            # Use PostgreSQL full-text search with proper syntax
             base_query = base_query.filter(
                 or_(
-                    search_vector.match(search_query),
+                    text("to_tsvector('english', academy_name || ' ' || COALESCE(description, '') || ' ' || COALESCE(tagline, '')) @@ plainto_tsquery('english', :query)"),
                     ProfilePage.academy_name.ilike(f'%{query}%'),
                     ProfilePage.description.ilike(f'%{query}%'),
                     ProfilePage.tagline.ilike(f'%{query}%')
                 )
-            )
+            ).params(query=query)
         
         # Apply type filter
         if profile_type != 'all':
@@ -124,7 +118,7 @@ def search_profiles():
             'error': str(e)
         }), 500
 
-@search_bp.route('/search/posts', methods=['GET'])
+@search_routes.route('/search/posts', methods=['GET'])
 def search_posts():
     """
     Advanced post search with PostgreSQL full-text search
@@ -145,20 +139,14 @@ def search_posts():
         
         # Apply text search if query provided
         if query:
-            # Use PostgreSQL full-text search
-            search_vector = func.to_tsvector('english', 
-                Post.content + ' ' + 
-                func.coalesce(Post.location, '')
-            )
-            search_query = func.plainto_tsquery('english', query)
-            
+            # Use PostgreSQL full-text search with proper syntax
             base_query = base_query.filter(
                 or_(
-                    search_vector.match(search_query),
+                    text("to_tsvector('english', content || ' ' || COALESCE(location, '')) @@ plainto_tsquery('english', :query)"),
                     Post.content.ilike(f'%{query}%'),
                     Post.location.ilike(f'%{query}%')
                 )
-            )
+            ).params(query=query)
         
         # Apply type filter
         if post_type != 'all':
@@ -219,7 +207,7 @@ def search_posts():
             'error': str(e)
         }), 500
 
-@search_bp.route('/search/suggestions', methods=['GET'])
+@search_routes.route('/search/suggestions', methods=['GET'])
 def search_suggestions():
     """
     Get search suggestions based on partial input
@@ -288,7 +276,7 @@ def search_suggestions():
             'error': str(e)
         }), 500
 
-@search_bp.route('/search/analytics', methods=['GET'])
+@search_routes.route('/search/analytics', methods=['GET'])
 def search_analytics():
     """
     Get search analytics and statistics
@@ -343,3 +331,345 @@ def search_analytics():
             'success': False,
             'error': str(e)
         }), 500
+
+@search_routes.route('/search/comprehensive', methods=['GET'])
+def comprehensive_search():
+    """
+    Comprehensive search across all database tables
+    """
+    try:
+        # Get search parameters
+        query = request.args.get('q', '').strip()
+        search_type = request.args.get('type', 'all')  # all, users, pages, posts, videos
+        sort_by = request.args.get('sort', 'relevance')
+        sort_order = request.args.get('order', 'desc')
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))
+        
+        logger.info(f"🔍 Comprehensive search: query='{query}', type='{search_type}'")
+        
+        results = {
+            'users': [],
+            'pages': [],
+            'posts': [],
+            'videos': [],
+            'total_results': 0,
+            'search_info': {
+                'query': query,
+                'type': search_type,
+                'sort_by': sort_by,
+                'sort_order': sort_order
+            }
+        }
+        
+        if not query:
+            return jsonify({
+                'success': True,
+                'results': results,
+                'message': 'Please provide a search query'
+            }), 200
+        
+        # Search Users (Registered Users)
+        if search_type in ['all', 'users']:
+            users = search_users_comprehensive(query, sort_by, sort_order, page, per_page)
+            results['users'] = users
+        
+        # Search Pages (Academies, Venues, Communities)
+        if search_type in ['all', 'pages']:
+            pages = search_pages_comprehensive(query, sort_by, sort_order, page, per_page)
+            results['pages'] = pages
+        
+        # Search Posts
+        if search_type in ['all', 'posts']:
+            posts = search_posts_comprehensive(query, sort_by, sort_order, page, per_page)
+            results['posts'] = posts
+        
+        # Search Videos
+        if search_type in ['all', 'videos']:
+            videos = search_videos_comprehensive(query, sort_by, sort_order, page, per_page)
+            results['videos'] = videos
+        
+        # Calculate total results
+        results['total_results'] = len(results['users']) + len(results['pages']) + len(results['posts']) + len(results['videos'])
+        
+        logger.info(f"✅ Found {results['total_results']} total results")
+        
+        return jsonify({
+            'success': True,
+            'results': results,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': results['total_results']
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"❌ Comprehensive search error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+def search_users_comprehensive(query, sort_by, sort_order, page, per_page):
+    """Search registered users from database"""
+    try:
+        # Build search query for users
+        search_conditions = or_(
+            User.username.ilike(f'%{query}%'),
+            User.email.ilike(f'%{query}%'),
+            UserProfile.full_name.ilike(f'%{query}%'),
+            UserProfile.bio.ilike(f'%{query}%'),
+            UserProfile.location.ilike(f'%{query}%')
+        )
+        
+        # Join with UserProfile for comprehensive search
+        query_builder = db.session.query(User, UserProfile)\
+            .join(UserProfile, User.id == UserProfile.user_id)\
+            .filter(search_conditions)\
+            .filter(User.is_active == True)
+        
+        # Apply sorting
+        if sort_by == 'name':
+            order_column = UserProfile.full_name
+        elif sort_by == 'username':
+            order_column = User.username
+        elif sort_by == 'created':
+            order_column = User.created_at
+        elif sort_by == 'activity':
+            order_column = User.updated_at
+        else:  # relevance
+            order_column = User.username
+        
+        if sort_order == 'desc':
+            query_builder = query_builder.order_by(desc(order_column))
+        else:
+            query_builder = query_builder.order_by(asc(order_column))
+        
+        # Apply pagination
+        offset = (page - 1) * per_page
+        users_data = query_builder.offset(offset).limit(per_page).all()
+        
+        # Format results
+        users = []
+        for user, profile in users_data:
+            users.append({
+                'id': str(user.id),
+                'type': 'user',
+                'username': user.username,
+                'email': user.email,
+                'full_name': profile.full_name if profile else user.username,
+                'bio': profile.bio if profile else '',
+                'location': profile.location if profile else '',
+                'avatar': profile.profile_image_url if profile else '',
+                'is_verified': user.is_verified,
+                'is_active': user.is_active,
+                'created_at': user.created_at.isoformat(),
+                'updated_at': user.updated_at.isoformat(),
+                'profile_type': profile.profile_type if profile else 'player'
+            })
+        
+        return users
+        
+    except Exception as e:
+        logger.error(f"❌ User search error: {e}")
+        return []
+
+def search_pages_comprehensive(query, sort_by, sort_order, page, per_page):
+    """Search pages (academies, venues, communities) from database"""
+    try:
+        # Build search query for pages
+        search_conditions = or_(
+            ProfilePage.academy_name.ilike(f'%{query}%'),
+            ProfilePage.description.ilike(f'%{query}%'),
+            ProfilePage.tagline.ilike(f'%{query}%'),
+            ProfilePage.city.ilike(f'%{query}%'),
+            ProfilePage.state.ilike(f'%{query}%')
+        )
+        
+        query_builder = db.session.query(ProfilePage)\
+            .filter(search_conditions)\
+            .filter(ProfilePage.is_public == True)
+        
+        # Apply sorting
+        if sort_by == 'name':
+            order_column = ProfilePage.academy_name
+        elif sort_by == 'type':
+            order_column = ProfilePage.page_type
+        elif sort_by == 'created':
+            order_column = ProfilePage.created_at
+        elif sort_by == 'activity':
+            order_column = ProfilePage.updated_at
+        else:  # relevance
+            order_column = ProfilePage.academy_name
+        
+        if sort_order == 'desc':
+            query_builder = query_builder.order_by(desc(order_column))
+        else:
+            query_builder = query_builder.order_by(asc(order_column))
+        
+        # Apply pagination
+        offset = (page - 1) * per_page
+        pages_data = query_builder.offset(offset).limit(per_page).all()
+        
+        # Format results
+        pages = []
+        for page in pages_data:
+            pages.append({
+                'id': str(page.page_id),
+                'type': 'page',
+                'page_type': page.page_type.lower(),
+                'name': page.academy_name,
+                'description': page.description,
+                'tagline': page.tagline,
+                'city': page.city,
+                'state': page.state,
+                'country': page.country,
+                'contact_person': page.contact_person,
+                'contact_email': page.contact_email,
+                'contact_phone': page.contact_phone,
+                'is_public': page.is_public,
+                'is_verified': page.is_verified,
+                'created_at': page.created_at.isoformat(),
+                'updated_at': page.updated_at.isoformat()
+            })
+        
+        return pages
+        
+    except Exception as e:
+        logger.error(f"❌ Page search error: {e}")
+        return []
+
+def search_posts_comprehensive(query, sort_by, sort_order, page, per_page):
+    """Search posts from database"""
+    try:
+        # Build search query for posts
+        search_conditions = or_(
+            Post.content.ilike(f'%{query}%'),
+            Post.location.ilike(f'%{query}%')
+        )
+        
+        # Join with User to get author info
+        query_builder = db.session.query(Post, User)\
+            .join(User, Post.user_id == User.id)\
+            .filter(search_conditions)\
+            .filter(Post.is_active == True)
+        
+        # Apply sorting
+        if sort_by == 'created':
+            order_column = Post.created_at
+        elif sort_by == 'likes':
+            order_column = Post.likes_count
+        elif sort_by == 'comments':
+            order_column = Post.comments_count
+        elif sort_by == 'engagement':
+            order_column = Post.engagement_score
+        else:  # relevance
+            order_column = Post.created_at
+        
+        if sort_order == 'desc':
+            query_builder = query_builder.order_by(desc(order_column))
+        else:
+            query_builder = query_builder.order_by(asc(order_column))
+        
+        # Apply pagination
+        offset = (page - 1) * per_page
+        posts_data = query_builder.offset(offset).limit(per_page).all()
+        
+        # Format results
+        posts = []
+        for post, user in posts_data:
+            posts.append({
+                'id': str(post.id),
+                'type': 'post',
+                'content': post.content,
+                'post_type': post.post_type,
+                'image_url': post.image_url,
+                'video_url': post.video_url,
+                'location': post.location,
+                'likes_count': post.likes_count,
+                'comments_count': post.comments_count,
+                'shares_count': post.shares_count,
+                'views_count': post.views_count,
+                'created_at': post.created_at.isoformat(),
+                'author': {
+                    'id': str(user.id),
+                    'username': user.username,
+                    'email': user.email
+                }
+            })
+        
+        return posts
+        
+    except Exception as e:
+        logger.error(f"❌ Post search error: {e}")
+        return []
+
+def search_videos_comprehensive(query, sort_by, sort_order, page, per_page):
+    """Search videos (posts with video_url) from database"""
+    try:
+        # Build search query for videos
+        search_conditions = and_(
+            Post.video_url.isnot(None),
+            Post.video_url != '',
+            or_(
+                Post.content.ilike(f'%{query}%'),
+                Post.location.ilike(f'%{query}%')
+            )
+        )
+        
+        # Join with User to get author info
+        query_builder = db.session.query(Post, User)\
+            .join(User, Post.user_id == User.id)\
+            .filter(search_conditions)\
+            .filter(Post.is_active == True)
+        
+        # Apply sorting
+        if sort_by == 'created':
+            order_column = Post.created_at
+        elif sort_by == 'likes':
+            order_column = Post.likes_count
+        elif sort_by == 'comments':
+            order_column = Post.comments_count
+        elif sort_by == 'views':
+            order_column = Post.views_count
+        else:  # relevance
+            order_column = Post.created_at
+        
+        if sort_order == 'desc':
+            query_builder = query_builder.order_by(desc(order_column))
+        else:
+            query_builder = query_builder.order_by(asc(order_column))
+        
+        # Apply pagination
+        offset = (page - 1) * per_page
+        videos_data = query_builder.offset(offset).limit(per_page).all()
+        
+        # Format results
+        videos = []
+        for post, user in videos_data:
+            videos.append({
+                'id': str(post.id),
+                'type': 'video',
+                'content': post.content,
+                'video_url': post.video_url,
+                'thumbnail_url': post.image_url,  # Use image_url as thumbnail
+                'location': post.location,
+                'likes_count': post.likes_count,
+                'comments_count': post.comments_count,
+                'shares_count': post.shares_count,
+                'views_count': post.views_count,
+                'duration': None,  # Could be added to Post model
+                'created_at': post.created_at.isoformat(),
+                'author': {
+                    'id': str(user.id),
+                    'username': user.username,
+                    'email': user.email
+                }
+            })
+        
+        return videos
+        
+    except Exception as e:
+        logger.error(f"❌ Video search error: {e}")
+        return []

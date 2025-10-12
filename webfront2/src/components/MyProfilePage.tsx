@@ -92,7 +92,55 @@ export function MyProfilePage({ onBack }: MyProfilePageProps) {
   // Load profile data on component mount
   useEffect(() => {
     loadProfileData();
+    loadUserPosts();
   }, []);
+
+  // Load user-specific posts
+  const loadUserPosts = async () => {
+    try {
+      setLoadingPosts(true);
+      console.log('🔄 Loading user-specific posts...');
+      
+      // Get Firebase token
+      const firebaseToken = localStorage.getItem('firebaseToken');
+      if (!firebaseToken) {
+        console.warn('No Firebase token found for posts');
+        return;
+      }
+      
+      // Get user ID from profile data or Firebase user
+      const userId = profileData?.id || firebaseUser?.uid;
+      if (!userId) {
+        console.warn('No user ID found for posts');
+        return;
+      }
+      
+      // Fetch user-specific posts
+      const response = await fetch(`http://localhost:5000/api/posts?user_id=${userId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${firebaseToken}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ User posts loaded:', data);
+        
+        if (data.success && data.posts) {
+          setPosts(data.posts);
+          setAllPosts(data.posts);
+        }
+      } else {
+        console.error('❌ Failed to load user posts:', response.status);
+      }
+    } catch (error) {
+      console.error('❌ Error loading user posts:', error);
+    } finally {
+      setLoadingPosts(false);
+    }
+  };
 
   const loadProfileData = async () => {
     setLoading(true);
@@ -397,6 +445,11 @@ export function MyProfilePage({ onBack }: MyProfilePageProps) {
     setPostsViewMode(mode);
   };
 
+  // Refresh posts
+  const handleRefreshPosts = async () => {
+    await loadUserPosts();
+  };
+
   // Handle achievements
   const handleAddAchievement = (achievement: any) => {
     setAchievements(prev => [...prev, { ...achievement, id: Date.now() }]);
@@ -681,6 +734,16 @@ export function MyProfilePage({ onBack }: MyProfilePageProps) {
               Posts {showAllPosts ? allPosts.length : posts.length}
             </h2>
             <div className="flex space-x-2">
+              <button
+                onClick={handleRefreshPosts}
+                disabled={loadingPosts}
+                className="p-2 rounded transition-colors hover:bg-gray-100 disabled:opacity-50"
+                title="Refresh Posts"
+              >
+                <svg className={`w-5 h-5 text-gray-600 ${loadingPosts ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
               <button 
                 onClick={() => handlePostsViewToggle('grid')}
                 className={`p-2 rounded transition-colors`}

@@ -18,6 +18,9 @@ load_dotenv()
 # Initialize Flask app
 app = Flask(__name__)
 
+# Import error handlers
+from middleware.error_handler import register_error_handlers
+
 # Configuration
 from config import config
 import os
@@ -262,6 +265,9 @@ def uploaded_file(filename):
 
 # Initialize Socket.IO
 socketio = init_socketio(app)
+
+# Register error handlers
+register_error_handlers(app)
 
 # Run the Flask application
 if __name__ == '__main__':

@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from models import db, Post, PostLike, PostComment, PostBookmark, User
 from datetime import datetime
 import re
+from utils.firebase_auth import get_user_id_from_token, get_user_info_from_token
 
 feed_bp = Blueprint('feed', __name__)
 
@@ -53,10 +54,14 @@ def get_feed():
             auth_header = request.headers.get('Authorization')
             if auth_header and auth_header.startswith('Bearer '):
                 token = auth_header.split(' ')[1]
-                # For now, we'll use a simple approach - in production, verify the Firebase token
-                # and get the user ID from the token payload
-                current_user_id = "17c9109e-cb20-4723-be49-c26b8343cd19"  # This should be extracted from the Firebase token
-        except:
+                # Extract user ID from Firebase token
+                current_user_id = get_user_id_from_token(token)
+                if current_user_id:
+                    print(f"✅ Authenticated user: {current_user_id}")
+                else:
+                    print("❌ Invalid token")
+        except Exception as e:
+            print(f"❌ Authentication error: {e}")
             pass  # Not authenticated, show public posts only
         
         if search_query:
@@ -203,19 +208,17 @@ def create_post():
         if auth_header and auth_header.startswith('Bearer '):
             token = auth_header.split(' ')[1]
             try:
-                # For development, we'll use a simple approach
-                # In production, verify the Firebase token and extract user ID
-                if token and len(token) > 10:  # Basic token validation
-                    # For now, use a default user ID for development
-                    # TODO: Implement proper Firebase token verification
-                    current_user_id = "17c9109e-cb20-4723-be49-c26b8343cd19"
+                # Extract user ID from Firebase token
+                current_user_id = get_user_id_from_token(token)
+                if current_user_id:
+                    print(f"✅ Creating post for user: {current_user_id}")
                 else:
-                    print(f"Invalid token format: {token[:10]}...")
+                    print("❌ Invalid token")
             except Exception as e:
-                print(f"Token processing error: {e}")
+                print(f"❌ Token processing error: {e}")
         
         if not current_user_id:
-            print("No valid authentication found")
+            print("❌ No valid authentication found")
             return jsonify({'error': 'Authentication required. Please log in again.'}), 401
             
         data = request.get_json()
@@ -300,6 +303,7 @@ def get_posts():
         sort_by = request.args.get('sort_by', 'created_at')
         order = request.args.get('order', 'desc')
         page_id = request.args.get('page_id')  # Add page_id filtering
+        user_id = request.args.get('user_id')  # Add user_id filtering
         
         # Build query
         query = Post.query
@@ -307,6 +311,10 @@ def get_posts():
         # Add page_id filtering if provided
         if page_id:
             query = query.filter_by(page_id=page_id)
+        
+        # Add user_id filtering if provided
+        if user_id:
+            query = query.filter_by(user_id=user_id)
         
         # Apply sorting
         if sort_by == 'created_at':

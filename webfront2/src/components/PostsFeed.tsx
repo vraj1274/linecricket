@@ -24,9 +24,13 @@ interface Post {
 interface PostsFeedProps {
   className?: string;
   onNavigateToProfile?: (profileId: string, profileType: 'player' | 'coach' | 'venue' | 'academy' | 'community') => void;
+  userId?: string;
+  pageId?: string;
+  showUserPosts?: boolean;
+  showPagePosts?: boolean;
 }
 
-export function PostsFeed({ className = "", onNavigateToProfile }: PostsFeedProps) {
+export function PostsFeed({ className = "", onNavigateToProfile, userId, pageId, showUserPosts, showPagePosts }: PostsFeedProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -35,7 +39,16 @@ export function PostsFeed({ className = "", onNavigateToProfile }: PostsFeedProp
   const fetchPosts = async (page: number = 1, reset: boolean = false) => {
     try {
       setIsLoading(true);
-      const response = await apiService.getPosts(page, 10);
+      let response;
+      
+      // Fetch posts based on filtering criteria
+      if (userId && showUserPosts) {
+        response = await apiService.getPostsByUser(userId, page, 10);
+      } else if (pageId && showPagePosts) {
+        response = await apiService.getPostsByPage(pageId, page, 10);
+      } else {
+        response = await apiService.getPosts(page, 10);
+      }
       
       if (response.success) {
         if (reset) {
@@ -55,7 +68,7 @@ export function PostsFeed({ className = "", onNavigateToProfile }: PostsFeedProp
 
   useEffect(() => {
     fetchPosts(1, true);
-  }, []);
+  }, [userId, pageId, showUserPosts, showPagePosts]);
 
   const loadMore = () => {
     if (!isLoading && hasMore) {

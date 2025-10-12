@@ -410,7 +410,7 @@ def _search_users(query, page=1, per_page=5):
                 'id': str(user.id),
                 'name': profile.full_name if profile and profile.full_name else user.username,
                 'initials': (profile.full_name[:2].upper() if profile and profile.full_name else user.username[:2].upper()),
-                'followers': f"{getattr(user, 'followers_count', 0)} followers",
+                'followers': f"{user.posts.count()} posts",
                 'type': 'Player',
                 'verified': user.is_verified,
                 'gradient': 'from-blue-500 to-purple-600',
@@ -445,7 +445,7 @@ def _search_matches(query, page=1, per_page=5):
                 'id': match.id,
                 'name': match.title,
                 'initials': match.title[:2].upper(),
-                'followers': f"{match.max_participants or 0} participants",
+                'followers': f"{match.players_needed or 0} players needed",
                 'type': match.match_type.value if match.match_type else 'Match',
                 'verified': True,
                 'gradient': 'from-green-500 to-teal-600',
@@ -513,7 +513,7 @@ def _search_academies(query, page=1, per_page=5):
                 'id': user.id,
                 'name': profile.organization if profile and profile.organization else 'Cricket Academy',
                 'initials': 'AC',
-                'followers': f"{user.followers_count or 0} students",
+                'followers': f"{user.posts.count()} posts",
                 'type': 'Academy',
                 'verified': user.is_verified,
                 'gradient': 'from-purple-500 to-pink-600',
@@ -624,7 +624,7 @@ def _search_coaches(query, page=1, per_page=5):
                 'id': user.id,
                 'name': profile.full_name if profile else user.username,
                 'initials': 'CH',
-                'followers': f"{user.followers_count or 0} students",
+                'followers': f"{user.posts.count()} posts",
                 'type': 'Coach',
                 'verified': user.is_verified,
                 'gradient': 'from-yellow-500 to-orange-600',
@@ -653,7 +653,7 @@ def _search_by_location(query, page=1, per_page=5):
                 'id': match.id,
                 'name': match.title,
                 'initials': 'LO',
-                'followers': f"{match.max_participants or 0} participants",
+                'followers': f"{match.players_needed or 0} players needed",
                 'type': 'Match',
                 'verified': True,
                 'gradient': 'from-green-500 to-teal-600',
@@ -674,7 +674,7 @@ def _search_by_location(query, page=1, per_page=5):
                 'id': user.id,
                 'name': profile.full_name if profile else user.username,
                 'initials': 'US',
-                'followers': f"{user.followers_count or 0} followers",
+                'followers': f"{user.posts.count()} posts",
                 'type': 'Player',
                 'verified': user.is_verified,
                 'gradient': 'from-blue-500 to-purple-600',
@@ -693,7 +693,7 @@ def _search_by_location(query, page=1, per_page=5):
 def _get_trending_users(page=1, per_page=5):
     """Get trending users"""
     try:
-        users = User.query.join(User.profile).order_by(desc(User.followers_count)).limit(per_page).all()
+        users = User.query.join(User.profile).order_by(desc(User.created_at)).limit(per_page).all()
         
         results = []
         for user in users:
@@ -702,7 +702,7 @@ def _get_trending_users(page=1, per_page=5):
                 'id': user.id,
                 'name': profile.full_name if profile else user.username,
                 'initials': (profile.full_name[:2].upper() if profile and profile.full_name else user.username[:2].upper()),
-                'followers': f"{user.followers_count or 0} followers",
+                'followers': f"{user.posts.count()} posts",
                 'type': 'Player',
                 'verified': user.is_verified,
                 'gradient': 'from-blue-500 to-purple-600',
@@ -727,7 +727,7 @@ def _get_trending_matches(page=1, per_page=5):
                 'id': match.id,
                 'name': match.title,
                 'initials': match.title[:2].upper(),
-                'followers': f"{match.max_participants or 0} participants",
+                'followers': f"{match.players_needed or 0} players needed",
                 'type': match.match_type.value if match.match_type else 'Match',
                 'verified': True,
                 'gradient': 'from-green-500 to-teal-600',
@@ -802,7 +802,7 @@ def _get_trending_academies(page=1, per_page=5):
                 UserProfile.organization.ilike('%cricket%'),
                 UserProfile.organization.ilike('%training%')
             )
-        ).order_by(desc(User.followers_count)).limit(per_page).all()
+        ).order_by(desc(User.created_at)).limit(per_page).all()
         
         results = []
         for user in users:
@@ -811,7 +811,7 @@ def _get_trending_academies(page=1, per_page=5):
                 'id': user.id,
                 'name': profile.organization if profile and profile.organization else 'Cricket Academy',
                 'initials': 'AC',
-                'followers': f"{user.followers_count or 0} students",
+                'followers': f"{user.posts.count()} posts",
                 'type': 'Academy',
                 'verified': user.is_verified,
                 'gradient': 'from-purple-500 to-pink-600',
@@ -867,7 +867,7 @@ def _get_trending_coaches(page=1, per_page=5):
                 UserProfile.organization.ilike('%trainer%'),
                 UserProfile.organization.ilike('%instructor%')
             )
-        ).order_by(desc(User.followers_count)).limit(per_page).all()
+        ).order_by(desc(User.created_at)).limit(per_page).all()
         
         results = []
         for user in users:
@@ -876,7 +876,7 @@ def _get_trending_coaches(page=1, per_page=5):
                 'id': user.id,
                 'name': profile.full_name if profile else user.username,
                 'initials': 'CH',
-                'followers': f"{user.followers_count or 0} students",
+                'followers': f"{user.posts.count()} posts",
                 'type': 'Coach',
                 'verified': user.is_verified,
                 'gradient': 'from-yellow-500 to-orange-600',
@@ -1048,7 +1048,7 @@ def _search_coaches(query, page=1, per_page=5):
                 'id': str(coach.id),
                 'name': profile.full_name if profile and profile.full_name else coach.username,
                 'initials': (profile.full_name[:2].upper() if profile and profile.full_name else coach.username[:2].upper()),
-                'followers': f"{getattr(coach, 'followers_count', 0)} followers",
+                'followers': f"{coach.posts.count()} posts",
                 'type': 'Coach',
                 'verified': coach.is_verified,
                 'gradient': 'from-yellow-500 to-orange-600',
@@ -1155,7 +1155,7 @@ def _search_by_location(query, page=1, per_page=5):
                 'id': str(user.id),
                 'name': profile.full_name if profile and profile.full_name else user.username,
                 'initials': (profile.full_name[:2].upper() if profile and profile.full_name else user.username[:2].upper()),
-                'followers': f"{getattr(user, 'followers_count', 0)} followers",
+                'followers': f"{user.posts.count()} posts",
                 'type': 'Player',
                 'verified': user.is_verified,
                 'gradient': 'from-blue-500 to-purple-600',
