@@ -1119,35 +1119,6 @@ class ApiService {
     return this.handleResponse(response);
   }
 
-  // Posts API
-  async getPosts(page: number = 1, limit: number = 10): Promise<{
-    success: boolean;
-    posts: any[];
-    total: number;
-    current_page: number;
-    pages: number;
-  }> {
-    console.log(`🌐 Fetching posts - Page: ${page}, Limit: ${limit}`);
-    
-    const response = await this.makeRequest(`${API_BASE_URL}/api/posts?page=${page}&per_page=${limit}`, {
-      method: 'GET'
-    });
-
-    console.log('📥 Posts response:', response);
-    
-    // Transform the response to match expected format
-    if (response.posts) {
-      return {
-        success: true,
-        posts: response.posts,
-        total: response.total || response.posts.length,
-        current_page: response.current_page || page,
-        pages: response.pages || 1
-      };
-    }
-    
-    return this.handleResponse(response);
-  }
 
   // Utility methods
 }

@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useUserProfile } from '../contexts/UserProfileContext';
 import { useFirebase } from '../contexts/FirebaseContext';
-import { Loader2, Shield, User, Edit3, Calendar, MapPin, Mail, Phone, Trophy, Target, Zap, X, Save, Camera } from 'lucide-react';
+import { Loader2, Shield, User, Edit3, Calendar, MapPin, Mail, Phone, Trophy, Target, Zap, X, Save, Camera, Upload } from 'lucide-react';
+import { EditProfilePage } from './EditProfilePage';
+import { AddAchievementModal } from './AddAchievementModal';
+import { AddExperienceModal } from './AddExperienceModal';
+import { EditCricketStatsModal } from './EditCricketStatsModal';
+import { PersonalInfoModal } from './PersonalInfoModal';
+import { ImageUploadModal } from './ImageUploadModal';
 
 interface MyProfilePageProps {
   onBack: () => void;
@@ -55,33 +61,18 @@ export function MyProfilePage({ onBack }: MyProfilePageProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Edit profile form states
-  const [showEditForm, setShowEditForm] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editFormData, setEditFormData] = useState({
-    full_name: '',
-    bio: '',
-    location: '',
-    contact_number: '',
-    email: '',
-    age: '',
-    gender: '',
-    batting_skill: 0,
-    bowling_skill: 0,
-    fielding_skill: 0,
-    total_runs: 0,
-    total_wickets: 0,
-    total_matches: 0,
-    batting_average: 0,
-    highest_score: 0,
-    centuries: 0,
-    half_centuries: 0,
-    bowling_average: 0,
-    best_bowling_figures: '',
-    catches: 0,
-    stumpings: 0,
-    run_outs: 0
-  });
+  // Edit profile page state
+  const [showEditPage, setShowEditPage] = useState(false);
+  const [postsViewMode, setPostsViewMode] = useState<'grid' | 'list'>('grid');
+  
+  // Achievements and Experience state
+  const [achievements, setAchievements] = useState<any[]>([]);
+  const [experiences, setExperiences] = useState<any[]>([]);
+  const [showAddAchievement, setShowAddAchievement] = useState(false);
+  const [showAddExperience, setShowAddExperience] = useState(false);
+  const [showEditStats, setShowEditStats] = useState(false);
+  const [showPersonalInfo, setShowPersonalInfo] = useState(false);
+  const [showImageUpload, setShowImageUpload] = useState(false);
   
   const { userProfile } = useUserProfile();
   const { user: firebaseUser } = useFirebase();
@@ -94,6 +85,9 @@ export function MyProfilePage({ onBack }: MyProfilePageProps) {
   const [stats, setStats] = useState<ProfileStats | null>(null);
   const [profileData, setProfileData] = useState<any>(null);
   const [createdPages, setCreatedPages] = useState<any[]>([]);
+  const [allPosts, setAllPosts] = useState<Post[]>([]);
+  const [showAllPosts, setShowAllPosts] = useState(false);
+  const [loadingPosts, setLoadingPosts] = useState(false);
 
   // Load profile data on component mount
   useEffect(() => {
@@ -183,6 +177,7 @@ export function MyProfilePage({ onBack }: MyProfilePageProps) {
         
         // Set posts, jobs, applications
         setPosts(data.recent_posts || []);
+        setAllPosts(data.recent_posts || []);
         setJobs(data.recent_jobs || []);
         setApplications(data.recent_applications || []);
         
@@ -377,159 +372,113 @@ export function MyProfilePage({ onBack }: MyProfilePageProps) {
 
   // Edit profile functions
   const handleEditProfile = () => {
-    setShowEditForm(true);
-    setIsEditing(true);
-    // Populate form with current data
-    setEditFormData({
-      full_name: user.name,
-      bio: user.bio,
-      location: user.location,
-      contact_number: profileData?.contact_number || '',
-      email: firebaseUser?.email || '',
-      age: profileData?.age || '',
-      gender: profileData?.gender || '',
-      batting_skill: profileData?.batting_skill || 0,
-      bowling_skill: profileData?.bowling_skill || 0,
-      fielding_skill: profileData?.fielding_skill || 0,
-      total_runs: profileData?.total_runs || 0,
-      total_wickets: profileData?.total_wickets || 0,
-      total_matches: profileData?.total_matches || 0,
-      batting_average: profileData?.batting_average || 0,
-      highest_score: profileData?.highest_score || 0,
-      centuries: profileData?.centuries || 0,
-      half_centuries: profileData?.half_centuries || 0,
-      bowling_average: profileData?.bowling_average || 0,
-      best_bowling_figures: profileData?.best_bowling_figures || '',
-      catches: profileData?.catches || 0,
-      stumpings: profileData?.stumpings || 0,
-      run_outs: profileData?.run_outs || 0
-    });
+    setShowEditPage(true);
   };
 
-  const handleSaveProfile = async () => {
-    setLoading(true);
+  const handleBackFromEdit = () => {
+    setShowEditPage(false);
+    // Refresh profile data after editing
+    loadProfileData();
+  };
+
+  // Handle view personal information
+  const handleViewPersonalInfo = () => {
+    setShowPersonalInfo(true);
+  };
+
+  // Handle match card clicks
+  const handleMatchClick = (matchName: string) => {
+    console.log(`Clicked on match: ${matchName}`);
+    // You can add navigation to match details here
+  };
+
+  // Handle posts view mode toggle
+  const handlePostsViewToggle = (mode: 'grid' | 'list') => {
+    setPostsViewMode(mode);
+  };
+
+  // Handle achievements
+  const handleAddAchievement = (achievement: any) => {
+    setAchievements(prev => [...prev, { ...achievement, id: Date.now() }]);
+    setShowAddAchievement(false);
+  };
+
+  const handleEditAchievement = (id: number, achievement: any) => {
+    setAchievements(prev => prev.map(a => a.id === id ? { ...a, ...achievement } : a));
+  };
+
+  const handleDeleteAchievement = (id: number) => {
+    setAchievements(prev => prev.filter(a => a.id !== id));
+  };
+
+  // Handle experiences
+  const handleAddExperience = (experience: any) => {
+    setExperiences(prev => [...prev, { ...experience, id: Date.now() }]);
+    setShowAddExperience(false);
+  };
+
+  const handleEditExperience = (id: number, experience: any) => {
+    setExperiences(prev => prev.map(e => e.id === id ? { ...e, ...experience } : e));
+  };
+
+  const handleDeleteExperience = (id: number) => {
+    setExperiences(prev => prev.filter(e => e.id !== id));
+  };
+
+  // Handle cricket stats edit
+  const handleEditCricketStats = () => {
+    setShowEditStats(true);
+  };
+
+  const handleSaveCricketStats = (stats: any) => {
+    // Update profile data with new stats
+    setProfileData((prev: any) => ({
+      ...prev,
+      ...stats
+    }));
+    setShowEditStats(false);
+  };
+
+  // Load more posts from database
+  const loadMorePosts = async () => {
+    setLoadingPosts(true);
     try {
-      console.log('💾 Saving profile data to database:', editFormData);
-      
-      // Get Firebase token
       const firebaseToken = localStorage.getItem('firebaseToken');
       if (!firebaseToken) {
         throw new Error('No Firebase token found');
       }
-      
-      // Prepare data for API call
-      const updateData = {
-        // Basic profile info
-        full_name: editFormData.full_name,
-        bio: editFormData.bio,
-        location: editFormData.location,
-        contact_number: editFormData.contact_number,
-        age: editFormData.age,
-        gender: editFormData.gender,
-        
-        // Cricket skills
-        batting_skill: editFormData.batting_skill,
-        bowling_skill: editFormData.bowling_skill,
-        fielding_skill: editFormData.fielding_skill,
-        
-        // Cricket statistics
-        total_runs: editFormData.total_runs,
-        total_wickets: editFormData.total_wickets,
-        total_matches: editFormData.total_matches,
-        batting_average: editFormData.batting_average,
-        highest_score: editFormData.highest_score,
-        centuries: editFormData.centuries,
-        half_centuries: editFormData.half_centuries,
-        bowling_average: editFormData.bowling_average,
-        best_bowling_figures: editFormData.best_bowling_figures,
-        catches: editFormData.catches,
-        stumpings: editFormData.stumpings,
-        run_outs: editFormData.run_outs
-      };
-      
-      // Make API call to update profile
-      const response = await fetch('http://localhost:5000/api/users/profile', {
-        method: 'PUT',
+
+      const response = await fetch('http://localhost:5000/api/posts/user-posts', {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${firebaseToken}`
-        },
-        body: JSON.stringify(updateData)
+        }
       });
-      
+
       if (response.ok) {
-        const result = await response.json();
-        console.log('✅ Profile updated successfully in database:', result);
-        
-        // Update local state with new data
-        const updatedProfileData = {
-          ...profileData,
-          ...editFormData
-        };
-        
-        setProfileData(updatedProfileData);
-        
-        // Close form
-        setShowEditForm(false);
-        setIsEditing(false);
-        
-        // Show success message
-        alert('Profile updated successfully!');
-        
-        // Reload profile data to ensure consistency
-        await loadProfileData();
-        
+        const data = await response.json();
+        setAllPosts(data.posts || []);
+        setShowAllPosts(true);
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('❌ Failed to update profile:', errorData);
-        setError(errorData.error || 'Failed to update profile');
-        alert('Failed to update profile. Please try again.');
+        console.error('Failed to load posts:', response.status);
       }
-      
-    } catch (err) {
-      console.error('❌ Error saving profile:', err);
-      setError('Failed to save profile');
-      alert('Failed to save profile. Please check your connection and try again.');
+    } catch (error) {
+      console.error('Error loading posts:', error);
     } finally {
-      setLoading(false);
+      setLoadingPosts(false);
     }
   };
 
-  const handleCancelEdit = () => {
-    setShowEditForm(false);
-    setIsEditing(false);
-    setEditFormData({
-      full_name: '',
-      bio: '',
-      location: '',
-      contact_number: '',
-      email: '',
-      age: '',
-      gender: '',
-      batting_skill: 0,
-      bowling_skill: 0,
-      fielding_skill: 0,
-      total_runs: 0,
-      total_wickets: 0,
-      total_matches: 0,
-      batting_average: 0,
-      highest_score: 0,
-      centuries: 0,
-      half_centuries: 0,
-      bowling_average: 0,
-      best_bowling_figures: '',
-      catches: 0,
-      stumpings: 0,
-      run_outs: 0
-    });
+  // Handle profile image upload
+  const handleImageUpload = (imageUrl: string) => {
+    setProfileData((prev: any) => ({
+      ...prev,
+      profile_image_url: imageUrl
+    }));
+    setShowImageUpload(false);
   };
 
-  const handleInputChange = (field: string, value: any) => {
-    setEditFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
 
   const user = profileData ? {
     name: profileData.full_name || profileData.profile?.full_name || firebaseUser?.displayName || 'User',
@@ -553,6 +502,11 @@ export function MyProfilePage({ onBack }: MyProfilePageProps) {
     posts: posts.length,
     verified: false
   };
+
+  // Show edit profile page if editing
+  if (showEditPage) {
+    return <EditProfilePage onBack={handleBackFromEdit} />;
+  }
 
   if (loading) {
     return (
@@ -608,15 +562,32 @@ export function MyProfilePage({ onBack }: MyProfilePageProps) {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Profile Header */}
-        <div className="text-center mb-8">
-          <div className="relative inline-block mb-4">
-            <div className="w-24 h-24 bg-gray-300 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-              {user.avatar}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6" style={{ backgroundColor: 'var(--field-light)' }}>
+        {/* Profile Header - First Image Layout */}
+        <div className="flex flex-col sm:flex-row items-start space-y-4 sm:space-y-0 sm:space-x-6 mb-8">
+          {/* Profile Picture */}
+          <div className="relative flex-shrink-0">
+            <div 
+              className="w-20 h-20 rounded-full flex items-center justify-center text-white text-2xl font-bold cursor-pointer transition-all duration-200 hover:opacity-80 relative group"
+              style={{ backgroundColor: 'var(--cricket-green)' }}
+              onClick={() => setShowImageUpload(true)}
+            >
+              {profileData?.profile_image_url ? (
+                <img 
+                  src={profileData.profile_image_url} 
+                  alt="Profile" 
+                  className="w-full h-full rounded-full object-cover"
+                />
+              ) : (
+                user.avatar
+              )}
+              {/* Camera overlay on hover */}
+              <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <Camera className="w-6 h-6 text-white" />
+              </div>
             </div>
             {user.verified && (
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center" style={{ backgroundColor: 'var(--success)' }}>
                 <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
@@ -624,24 +595,26 @@ export function MyProfilePage({ onBack }: MyProfilePageProps) {
             )}
           </div>
           
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">{user.name}</h1>
+          {/* Name and Username */}
+          <div className="flex-1 w-full">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">{user.name}</h1>
           <p className="text-gray-600 mb-4">@{user.username}</p>
           
           {/* Statistics Bar */}
-          <div className="flex flex-wrap justify-center gap-4 sm:gap-8 mb-6">
-            <div className="text-center min-w-[80px]">
+            <div className="flex flex-wrap gap-4 sm:gap-8 mb-6">
+              <div className="text-center min-w-[60px]">
               <div className="text-xl sm:text-2xl font-bold text-gray-900">{user.posts}</div>
               <div className="text-xs sm:text-sm text-gray-600">Posts</div>
             </div>
-            <div className="text-center min-w-[80px]">
+              <div className="text-center min-w-[60px]">
               <div className="text-xl sm:text-2xl font-bold text-gray-900">{user.followers}</div>
               <div className="text-xs sm:text-sm text-gray-600">Connections</div>
             </div>
-            <div className="text-center min-w-[80px]">
+              <div className="text-center min-w-[60px]">
               <div className="text-xl sm:text-2xl font-bold text-gray-900">0</div>
               <div className="text-xs sm:text-sm text-gray-600">Matches</div>
             </div>
-            <div className="text-center min-w-[80px]">
+              <div className="text-center min-w-[60px]">
               <div className="text-xl sm:text-2xl font-bold text-gray-900">0</div>
               <div className="text-xs sm:text-sm text-gray-600">Runs</div>
             </div>
@@ -649,173 +622,303 @@ export function MyProfilePage({ onBack }: MyProfilePageProps) {
           
           <button 
             onClick={handleEditProfile}
-            className="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg hover:bg-gray-300 transition-colors flex items-center space-x-2"
+            className="px-4 sm:px-6 py-2 rounded-lg transition-colors text-sm sm:text-base text-white font-medium"
+            style={{ backgroundColor: 'var(--cricket-green)', color: 'white' }}
+            onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--cricket-green-hover)'}
+            onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--cricket-green)'}
           >
-            <Edit3 className="w-4 h-4" />
-            <span>Edit Profile</span>
+              Edit Profile
           </button>
+          </div>
         </div>
 
-        {/* Personal Information Card */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
+        {/* Personal Information Card - First Image */}
+        <div className="border rounded-lg p-4 sm:p-6 mb-6" style={{ backgroundColor: 'var(--stadium-white)', borderColor: 'var(--gray-200)' }}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 space-y-2 sm:space-y-0">
             <div className="flex items-center space-x-2">
-              <Shield className="w-5 h-5 text-gray-600" />
-              <h2 className="text-lg font-semibold text-gray-900">Personal Information</h2>
+              <Shield className="w-5 h-5" style={{ color: 'var(--cricket-green)' }} />
+              <div>
+                <h2 className="text-base sm:text-lg font-semibold text-gray-900">Personal Information</h2>
+                <p className="text-xs sm:text-sm text-gray-500">Private details visible only to you</p>
             </div>
-            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
+            </div>
+            <button
+              onClick={handleViewPersonalInfo}
+              className="text-white px-3 sm:px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 text-sm sm:text-base font-medium"
+              style={{ backgroundColor: 'var(--fire-orange)' }}
+              onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--fire-orange-hover)'}
+              onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--fire-orange)'}
+            >
               <User className="w-4 h-4" />
               <span>View</span>
             </button>
           </div>
           
-          <p className="text-sm text-gray-500 mb-4">Private details visible only to you</p>
-          
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-gray-500">Full Name:</p>
-              <p className="text-gray-900">{user.name}</p>
+              <p className="text-gray-900 font-medium">{user.name}</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Contact:</p>
-              <p className="text-gray-900">Not provided</p>
+              <p className="text-gray-900 font-medium">Not provided</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Location:</p>
-              <p className="text-gray-900">{user.location}</p>
+              <p className="text-gray-900 font-medium">Not provided</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Email:</p>
-              <p className="text-gray-900">{firebaseUser?.email || 'Not provided'}</p>
+              <p className="text-gray-900 font-medium break-all">{firebaseUser?.email || 'Not provided'}</p>
             </div>
           </div>
         </div>
 
-        {/* Posts Section */}
+        {/* Posts Section - First Image */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Posts {posts.length}</h2>
+            <h2 className="text-lg font-semibold" style={{ color: 'var(--cricket-green)' }}>
+              Posts {showAllPosts ? allPosts.length : posts.length}
+            </h2>
             <div className="flex space-x-2">
-              <button className="p-2 hover:bg-gray-100 rounded">
+              <button 
+                onClick={() => handlePostsViewToggle('grid')}
+                className={`p-2 rounded transition-colors`}
+                style={{ 
+                  backgroundColor: postsViewMode === 'grid' ? 'var(--cricket-green-light)' : 'transparent',
+                  color: postsViewMode === 'grid' ? 'white' : 'var(--cricket-green)'
+                }}
+                onMouseEnter={(e) => {
+                  if (postsViewMode !== 'grid') {
+                    (e.target as HTMLButtonElement).style.backgroundColor = 'var(--gray-100)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (postsViewMode !== 'grid') {
+                    (e.target as HTMLButtonElement).style.backgroundColor = 'transparent';
+                  }
+                }}
+              >
                 <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                 </svg>
               </button>
-              <button className="p-2 hover:bg-gray-100 rounded">
+              <button 
+                onClick={() => handlePostsViewToggle('list')}
+                className={`p-2 rounded transition-colors`}
+                style={{ 
+                  backgroundColor: postsViewMode === 'list' ? 'var(--cricket-green-light)' : 'transparent',
+                  color: postsViewMode === 'list' ? 'white' : 'var(--cricket-green)'
+                }}
+                onMouseEnter={(e) => {
+                  if (postsViewMode !== 'list') {
+                    (e.target as HTMLButtonElement).style.backgroundColor = 'var(--gray-100)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (postsViewMode !== 'list') {
+                    (e.target as HTMLButtonElement).style.backgroundColor = 'transparent';
+                  }
+                }}
+              >
                 <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
                 </svg>
               </button>
             </div>
           </div>
+
+          {/* Posts Grid */}
+          <div className="mb-4">
+            {postsViewMode === 'grid' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {(showAllPosts ? allPosts : posts).map((post) => (
+                  <div key={post.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: 'var(--cricket-green)' }}>
+                        {user.avatar}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <h4 className="text-sm font-semibold text-gray-900 truncate">{user.name}</h4>
+                          <span className="text-xs text-gray-500">@{user.username}</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mb-2">
+                          {new Date(post.created_at).toLocaleDateString()}
+                        </p>
+                        <p className="text-sm text-gray-900 line-clamp-3">{post.content}</p>
+                        <div className="flex items-center space-x-4 mt-3 text-xs text-gray-500">
+                          <span className="flex items-center space-x-1">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                            </svg>
+                            <span>{post.likes_count}</span>
+                          </span>
+                          <span className="flex items-center space-x-1">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                            <span>{post.comments_count}</span>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {(showAllPosts ? allPosts : posts).map((post) => (
+                  <div key={post.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: 'var(--cricket-green)' }}>
+                        {user.avatar}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <h4 className="text-sm font-semibold text-gray-900">{user.name}</h4>
+                          <span className="text-xs text-gray-500">@{user.username}</span>
+                          <span className="text-xs text-gray-500">•</span>
+                          <span className="text-xs text-gray-500">
+                            {new Date(post.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-900 mb-3">{post.content}</p>
+                        <div className="flex items-center space-x-4 text-xs text-gray-500">
+                          <span className="flex items-center space-x-1">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                            </svg>
+                            <span>{post.likes_count}</span>
+                          </span>
+                          <span className="flex items-center space-x-1">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                            <span>{post.comments_count}</span>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* More Posts Button */}
+          {!showAllPosts && posts.length > 0 && (
+            <div className="text-center">
+              <button
+                onClick={loadMorePosts}
+                disabled={loadingPosts}
+                className="px-6 py-2 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ backgroundColor: 'var(--cricket-green)' }}
+                onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--cricket-green-hover)'}
+                onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--cricket-green)'}
+              >
+                {loadingPosts ? (
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Loading...</span>
+                  </div>
+                ) : (
+                  'More Posts'
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Show Less Button */}
+          {showAllPosts && allPosts.length > posts.length && (
+            <div className="text-center">
+              <button
+                onClick={() => setShowAllPosts(false)}
+                className="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Show Less
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Cricket Statistics */}
+        {/* Cricket Statistics - Second Image */}
         <div className="space-y-6">
-          {/* Batting Statistics */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold" style={{ color: 'var(--cricket-green)' }}>Cricket Statistics</h2>
+            <button
+              onClick={handleEditCricketStats}
+              className="flex items-center space-x-2 transition-colors"
+              style={{ color: 'var(--fire-orange)' }}
+              onMouseEnter={(e) => (e.target as HTMLButtonElement).style.color = 'var(--fire-orange-hover)'}
+              onMouseLeave={(e) => (e.target as HTMLButtonElement).style.color = 'var(--fire-orange)'}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              <span className="text-sm font-medium">Edit Stats</span>
+            </button>
+          </div>
+
+          {/* BOWLING Section */}
           <div>
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Cricket Statistics</h2>
-            <h3 className="text-md font-bold text-blue-600 mb-4">BATTING</h3>
+            <h3 className="text-base sm:text-lg font-bold mb-4" style={{ color: 'var(--sky-blue)' }}>BOWLING</h3>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="bg-amber-50 p-4 rounded-lg">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-3 sm:p-4 rounded-lg" style={{ backgroundColor: 'var(--info-light)' }}>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-700 text-sm sm:text-base">Total Runs</span>
-                  <span className="font-bold text-blue-600">{profileData?.total_runs || 0}</span>
+                  <span className="text-sm sm:text-base" style={{ color: 'var(--scoreboard-gray)' }}>Matches</span>
+                  <span className="font-bold" style={{ color: 'var(--sky-blue)' }}>{profileData?.total_matches || 0}</span>
                 </div>
               </div>
-              <div className="bg-amber-50 p-4 rounded-lg">
+              <div className="p-3 sm:p-4 rounded-lg" style={{ backgroundColor: 'var(--info-light)' }}>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-700 text-sm sm:text-base">Matches</span>
-                  <span className="font-bold text-blue-600">{profileData?.total_matches || 0}</span>
+                  <span className="text-sm sm:text-base" style={{ color: 'var(--scoreboard-gray)' }}>Wickets</span>
+                  <span className="font-bold" style={{ color: 'var(--sky-blue)' }}>{profileData?.total_wickets || 0}</span>
                 </div>
               </div>
-              <div className="bg-amber-50 p-4 rounded-lg">
+              <div className="p-3 sm:p-4 rounded-lg" style={{ backgroundColor: 'var(--info-light)' }}>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-700 text-sm sm:text-base">100s</span>
-                  <span className="font-bold text-blue-600">{profileData?.centuries || 0}</span>
+                  <span className="text-sm sm:text-base" style={{ color: 'var(--scoreboard-gray)' }}>Best</span>
+                  <span className="font-bold" style={{ color: 'var(--sky-blue)' }}>{profileData?.best_bowling_figures || '0/0'}</span>
                 </div>
               </div>
-              <div className="bg-amber-50 p-4 rounded-lg">
+              <div className="p-3 sm:p-4 rounded-lg" style={{ backgroundColor: 'var(--info-light)' }}>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-700 text-sm sm:text-base">50s</span>
-                  <span className="font-bold text-blue-600">{profileData?.half_centuries || 0}</span>
-                </div>
-              </div>
-              <div className="bg-amber-50 p-4 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-700 text-sm sm:text-base">Average</span>
-                  <span className="font-bold text-blue-600">{profileData?.batting_average || 0}</span>
-                </div>
-              </div>
-              <div className="bg-amber-50 p-4 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-700 text-sm sm:text-base">Highest</span>
-                  <span className="font-bold text-blue-600">{profileData?.highest_score || 0}</span>
+                  <span className="text-sm sm:text-base" style={{ color: 'var(--scoreboard-gray)' }}>Average</span>
+                  <span className="font-bold" style={{ color: 'var(--sky-blue)' }}>{profileData?.bowling_average || 0}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Bowling Statistics */}
+          {/* FIELDING Section */}
           <div>
-            <h3 className="text-md font-bold text-blue-600 mb-4">BOWLING</h3>
+            <h3 className="text-base sm:text-lg font-bold mb-4" style={{ color: 'var(--grass-green)' }}>FIELDING</h3>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-blue-50 p-4 rounded-lg">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-3 sm:p-4 rounded-lg" style={{ backgroundColor: 'var(--success-light)' }}>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-700 text-sm sm:text-base">Matches</span>
-                  <span className="font-bold text-blue-600">{profileData?.total_matches || 0}</span>
+                  <span className="text-sm sm:text-base" style={{ color: 'var(--scoreboard-gray)' }}>Matches</span>
+                  <span className="font-bold" style={{ color: 'var(--grass-green)' }}>{profileData?.total_matches || 0}</span>
                 </div>
               </div>
-              <div className="bg-blue-50 p-4 rounded-lg">
+              <div className="p-3 sm:p-4 rounded-lg" style={{ backgroundColor: 'var(--success-light)' }}>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-700 text-sm sm:text-base">Wickets</span>
-                  <span className="font-bold text-blue-600">{profileData?.total_wickets || 0}</span>
+                  <span className="text-sm sm:text-base" style={{ color: 'var(--scoreboard-gray)' }}>Catches</span>
+                  <span className="font-bold" style={{ color: 'var(--grass-green)' }}>{profileData?.catches || 0}</span>
                 </div>
               </div>
-              <div className="bg-blue-50 p-4 rounded-lg">
+              <div className="p-3 sm:p-4 rounded-lg" style={{ backgroundColor: 'var(--success-light)' }}>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-700 text-sm sm:text-base">Best</span>
-                  <span className="font-bold text-blue-600">{profileData?.best_bowling_figures || '0/0'}</span>
+                  <span className="text-sm sm:text-base" style={{ color: 'var(--scoreboard-gray)' }}>Stumpings</span>
+                  <span className="font-bold" style={{ color: 'var(--grass-green)' }}>{profileData?.stumpings || 0}</span>
                 </div>
               </div>
-              <div className="bg-blue-50 p-4 rounded-lg">
+              <div className="p-3 sm:p-4 rounded-lg" style={{ backgroundColor: 'var(--success-light)' }}>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-700 text-sm sm:text-base">Average</span>
-                  <span className="font-bold text-blue-600">{profileData?.bowling_average || 0}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Fielding Statistics */}
-          <div>
-            <h3 className="text-md font-bold text-green-600 mb-4">FIELDING</h3>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-green-50 p-4 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-700 text-sm sm:text-base">Matches</span>
-                  <span className="font-bold text-green-600">{profileData?.total_matches || 0}</span>
-                </div>
-              </div>
-              <div className="bg-green-50 p-4 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-700 text-sm sm:text-base">Catches</span>
-                  <span className="font-bold text-green-600">{profileData?.catches || 0}</span>
-                </div>
-              </div>
-              <div className="bg-green-50 p-4 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-700 text-sm sm:text-base">Stumpings</span>
-                  <span className="font-bold text-green-600">{profileData?.stumpings || 0}</span>
-                </div>
-              </div>
-              <div className="bg-green-50 p-4 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-700 text-sm sm:text-base">Run Outs</span>
-                  <span className="font-bold text-green-600">{profileData?.run_outs || 0}</span>
+                  <span className="text-sm sm:text-base" style={{ color: 'var(--scoreboard-gray)' }}>Run Outs</span>
+                  <span className="font-bold" style={{ color: 'var(--grass-green)' }}>{profileData?.run_outs || 0}</span>
                 </div>
               </div>
             </div>
@@ -823,44 +926,44 @@ export function MyProfilePage({ onBack }: MyProfilePageProps) {
 
           {/* Format Performance */}
           <div>
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Format Performance</h3>
+            <h3 className="text-lg font-bold mb-4" style={{ color: 'var(--cricket-green)' }}>Format Performance</h3>
             
             <div className="space-y-4">
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--pavilion-cream)' }}>
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="font-bold text-gray-900">Test Cricket</h4>
-                    <p className="text-sm text-gray-600">0 runs • 0 wickets</p>
+                    <h4 className="font-bold" style={{ color: 'var(--cricket-green)' }}>Test Cricket</h4>
+                    <p className="text-sm" style={{ color: 'var(--scoreboard-gray)' }}>0 runs • 0 wickets</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-gray-600">0 matches</p>
-                    <p className="text-sm text-gray-600">Avg: 0</p>
+                    <p className="text-sm" style={{ color: 'var(--scoreboard-gray)' }}>0 matches</p>
+                    <p className="text-sm" style={{ color: 'var(--scoreboard-gray)' }}><span className="font-bold">Avg:</span> 0</p>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--pavilion-cream)' }}>
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="font-bold text-gray-900">ODI Cricket</h4>
-                    <p className="text-sm text-gray-600">0 runs • 0 wickets</p>
+                    <h4 className="font-bold" style={{ color: 'var(--cricket-green)' }}>ODI Cricket</h4>
+                    <p className="text-sm" style={{ color: 'var(--scoreboard-gray)' }}>0 runs • 0 wickets</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-gray-600">0 matches</p>
-                    <p className="text-sm text-gray-600">Avg: 0</p>
+                    <p className="text-sm" style={{ color: 'var(--scoreboard-gray)' }}>0 matches</p>
+                    <p className="text-sm" style={{ color: 'var(--scoreboard-gray)' }}><span className="font-bold">Avg:</span> 0</p>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--pavilion-cream)' }}>
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="font-bold text-gray-900">T20 Cricket</h4>
-                    <p className="text-sm text-gray-600">0 runs • 0 wickets</p>
+                    <h4 className="font-bold" style={{ color: 'var(--cricket-green)' }}>T20 Cricket</h4>
+                    <p className="text-sm" style={{ color: 'var(--scoreboard-gray)' }}>0 runs • 0 wickets</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-gray-600">0 matches</p>
-                    <p className="text-sm text-gray-600">Avg: 0</p>
+                    <p className="text-sm" style={{ color: 'var(--scoreboard-gray)' }}>0 matches</p>
+                    <p className="text-sm" style={{ color: 'var(--scoreboard-gray)' }}><span className="font-bold">Avg:</span> 0</p>
                   </div>
                 </div>
               </div>
@@ -869,353 +972,243 @@ export function MyProfilePage({ onBack }: MyProfilePageProps) {
 
           {/* Skills Rating */}
           <div>
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Skills Rating</h3>
+            <h3 className="text-lg font-bold mb-4" style={{ color: 'var(--cricket-green)' }}>Skills Rating</h3>
             
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-gray-700 text-sm sm:text-base">Batting</span>
-                <span className="font-bold text-gray-900">{profileData?.batting_skill || 0}%</span>
+                <span style={{ color: 'var(--scoreboard-gray)' }}>Batting</span>
+                <span className="font-bold" style={{ color: 'var(--cricket-green)' }}>{profileData?.batting_skill || 0}%</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full rounded-full h-2" style={{ backgroundColor: 'var(--gray-200)' }}>
                 <div 
-                  className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
-                  style={{ width: `${profileData?.batting_skill || 0}%` }}
+                  className="h-2 rounded-full transition-all duration-300" 
+                  style={{ width: `${profileData?.batting_skill || 0}%`, backgroundColor: 'var(--fire-orange)' }}
                 ></div>
               </div>
               
               <div className="flex justify-between items-center">
-                <span className="text-gray-700 text-sm sm:text-base">Bowling</span>
-                <span className="font-bold text-gray-900">{profileData?.bowling_skill || 0}%</span>
+                <span style={{ color: 'var(--scoreboard-gray)' }}>Bowling</span>
+                <span className="font-bold" style={{ color: 'var(--cricket-green)' }}>{profileData?.bowling_skill || 0}%</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full rounded-full h-2" style={{ backgroundColor: 'var(--gray-200)' }}>
                 <div 
-                  className="bg-green-500 h-2 rounded-full transition-all duration-300" 
-                  style={{ width: `${profileData?.bowling_skill || 0}%` }}
+                  className="h-2 rounded-full transition-all duration-300" 
+                  style={{ width: `${profileData?.bowling_skill || 0}%`, backgroundColor: 'var(--sky-blue)' }}
                 ></div>
               </div>
               
               <div className="flex justify-between items-center">
-                <span className="text-gray-700 text-sm sm:text-base">Fielding</span>
-                <span className="font-bold text-gray-900">{profileData?.fielding_skill || 0}%</span>
+                <span style={{ color: 'var(--scoreboard-gray)' }}>Fielding</span>
+                <span className="font-bold" style={{ color: 'var(--cricket-green)' }}>{profileData?.fielding_skill || 0}%</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full rounded-full h-2" style={{ backgroundColor: 'var(--gray-200)' }}>
                 <div 
-                  className="bg-purple-500 h-2 rounded-full transition-all duration-300" 
-                  style={{ width: `${profileData?.fielding_skill || 0}%` }}
+                  className="h-2 rounded-full transition-all duration-300" 
+                  style={{ width: `${profileData?.fielding_skill || 0}%`, backgroundColor: 'var(--grass-green)' }}
                 ></div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="text-center mt-12 text-gray-500 text-sm">
-          © 2024 thelinecricket
+        {/* Experience Section - Third Image */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold" style={{ color: 'var(--cricket-green)' }}>Experience</h2>
+            <button
+              onClick={() => setShowAddExperience(true)}
+              className="flex items-center space-x-2 transition-colors"
+              style={{ color: 'var(--fire-orange)' }}
+              onMouseEnter={(e) => (e.target as HTMLButtonElement).style.color = 'var(--fire-orange-hover)'}
+              onMouseLeave={(e) => (e.target as HTMLButtonElement).style.color = 'var(--fire-orange)'}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span className="text-sm font-medium">Add Experience</span>
+            </button>
         </div>
+          
+          {experiences.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <p>No experience added yet</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {experiences.map((experience) => (
+                <div key={experience.id} className="bg-white border border-gray-200 rounded-lg p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900">{experience.title}</h3>
+                      <p className="text-sm text-gray-600">{experience.company}</p>
+                      <p className="text-sm text-gray-500">{experience.duration}</p>
+                      {experience.description && (
+                        <p className="text-sm text-gray-700 mt-2">{experience.description}</p>
+                      )}
+                    </div>
+                    <div className="flex space-x-2 ml-4">
+                      <button
+                        onClick={() => handleEditExperience(experience.id, experience)}
+                        className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteExperience(experience.id)}
+                        className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
       </div>
 
-      {/* Edit Profile Form Popup Modal */}
-      {showEditForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-gray-900">Edit Profile</h2>
-                <button
-                  onClick={handleCancelEdit}
-                  className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+        {/* Achievements Section - Third Image */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold" style={{ color: 'var(--cricket-green)' }}>Achievements</h2>
+            <button
+              onClick={() => setShowAddAchievement(true)}
+              className="flex items-center space-x-2 transition-colors"
+              style={{ color: 'var(--fire-orange)' }}
+              onMouseEnter={(e) => (e.target as HTMLButtonElement).style.color = 'var(--fire-orange-hover)'}
+              onMouseLeave={(e) => (e.target as HTMLButtonElement).style.color = 'var(--fire-orange)'}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span className="text-sm font-medium">Add Achievement</span>
+            </button>
+          </div>
+          
+          {achievements.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <p>No achievements added yet</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {achievements.map((achievement) => (
+                <div key={achievement.id} className="bg-white border border-gray-200 rounded-lg p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900">{achievement.title}</h3>
+                      <p className="text-sm text-gray-600">{achievement.organization}</p>
+                      <p className="text-sm text-gray-500">{achievement.date}</p>
+                      {achievement.description && (
+                        <p className="text-sm text-gray-700 mt-2">{achievement.description}</p>
+                      )}
+                    </div>
+                    <div className="flex space-x-2 ml-4">
+                      <button
+                        onClick={() => handleEditAchievement(achievement.id, achievement)}
+                        className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteAchievement(achievement.id)}
+                        className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Your Upcoming Matches - Third Image */}
+        <div className="mb-6">
+          <h2 className="text-base sm:text-lg font-bold mb-4" style={{ color: 'var(--cricket-green)' }}>Your Upcoming Matches</h2>
+          
+          <div className="space-y-4">
+            <div 
+              onClick={() => handleMatchClick('Sunday Cricket')}
+              className="rounded-lg p-3 sm:p-4 cursor-pointer transition-colors"
+              style={{ backgroundColor: 'var(--pavilion-cream)' }}
+              onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--gray-100)'}
+              onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--pavilion-cream)'}
+            >
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Sunday Cricket</h3>
+                  <p className="text-xs sm:text-sm text-gray-600">Shivaji Park, 7:00 AM</p>
+                </div>
+                <div className="text-left sm:text-right">
+                  <span className="text-xs sm:text-sm text-gray-500">Tomorrow</span>
+                </div>
               </div>
-
-              <form onSubmit={(e) => { e.preventDefault(); handleSaveProfile(); }} className="space-y-4">
-                {/* Personal Information */}
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Personal Information</h3>
-                  <div className="grid grid-cols-1 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Full Name</label>
-                      <input
-                        type="text"
-                        value={editFormData.full_name}
-                        onChange={(e) => handleInputChange('full_name', e.target.value)}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
-                      <input
-                        type="email"
-                        value={editFormData.email}
-                        onChange={(e) => handleInputChange('email', e.target.value)}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Location</label>
-                      <input
-                        type="text"
-                        value={editFormData.location}
-                        onChange={(e) => handleInputChange('location', e.target.value)}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Contact Number</label>
-                      <input
-                        type="tel"
-                        value={editFormData.contact_number}
-                        onChange={(e) => handleInputChange('contact_number', e.target.value)}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Age</label>
-                        <input
-                          type="number"
-                          value={editFormData.age}
-                          onChange={(e) => handleInputChange('age', e.target.value)}
-                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Gender</label>
-                        <select
-                          value={editFormData.gender}
-                          onChange={(e) => handleInputChange('gender', e.target.value)}
-                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="">Select</option>
-                          <option value="male">Male</option>
-                          <option value="female">Female</option>
-                          <option value="other">Other</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Bio</label>
-                      <textarea
-                        value={editFormData.bio}
-                        onChange={(e) => handleInputChange('bio', e.target.value)}
-                        rows={2}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Tell us about yourself..."
-                      />
-                    </div>
-                  </div>
+            </div>
+            
+            <div 
+              onClick={() => handleMatchClick('Practice Match')}
+              className="rounded-lg p-3 sm:p-4 cursor-pointer transition-colors"
+              style={{ backgroundColor: 'var(--pavilion-cream)' }}
+              onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--gray-100)'}
+              onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--pavilion-cream)'}
+            >
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Practice Match</h3>
+                  <p className="text-xs sm:text-sm text-gray-600">Oval Maidan, 6:00 PM</p>
                 </div>
-
-                {/* Cricket Statistics */}
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Cricket Statistics</h3>
-                  
-                  {/* Batting Stats */}
-                  <div className="mb-3">
-                    <h4 className="text-xs font-semibold text-blue-600 mb-2">Batting</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Total Runs</label>
-                        <input
-                          type="number"
-                          value={editFormData.total_runs}
-                          onChange={(e) => handleInputChange('total_runs', parseInt(e.target.value) || 0)}
-                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Matches</label>
-                        <input
-                          type="number"
-                          value={editFormData.total_matches}
-                          onChange={(e) => handleInputChange('total_matches', parseInt(e.target.value) || 0)}
-                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">100s</label>
-                        <input
-                          type="number"
-                          value={editFormData.centuries}
-                          onChange={(e) => handleInputChange('centuries', parseInt(e.target.value) || 0)}
-                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">50s</label>
-                        <input
-                          type="number"
-                          value={editFormData.half_centuries}
-                          onChange={(e) => handleInputChange('half_centuries', parseInt(e.target.value) || 0)}
-                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Average</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={editFormData.batting_average}
-                          onChange={(e) => handleInputChange('batting_average', parseFloat(e.target.value) || 0)}
-                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Highest Score</label>
-                        <input
-                          type="number"
-                          value={editFormData.highest_score}
-                          onChange={(e) => handleInputChange('highest_score', parseInt(e.target.value) || 0)}
-                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bowling Stats */}
-                  <div className="mb-3">
-                    <h4 className="text-xs font-semibold text-blue-600 mb-2">Bowling</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Wickets</label>
-                        <input
-                          type="number"
-                          value={editFormData.total_wickets}
-                          onChange={(e) => handleInputChange('total_wickets', parseInt(e.target.value) || 0)}
-                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Best Figures</label>
-                        <input
-                          type="text"
-                          value={editFormData.best_bowling_figures}
-                          onChange={(e) => handleInputChange('best_bowling_figures', e.target.value)}
-                          placeholder="e.g., 5/20"
-                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Bowling Average</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={editFormData.bowling_average}
-                          onChange={(e) => handleInputChange('bowling_average', parseFloat(e.target.value) || 0)}
-                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Fielding Stats */}
-                  <div className="mb-3">
-                    <h4 className="text-xs font-semibold text-green-600 mb-2">Fielding</h4>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Catches</label>
-                        <input
-                          type="number"
-                          value={editFormData.catches}
-                          onChange={(e) => handleInputChange('catches', parseInt(e.target.value) || 0)}
-                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Stumpings</label>
-                        <input
-                          type="number"
-                          value={editFormData.stumpings}
-                          onChange={(e) => handleInputChange('stumpings', parseInt(e.target.value) || 0)}
-                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Run Outs</label>
-                        <input
-                          type="number"
-                          value={editFormData.run_outs}
-                          onChange={(e) => handleInputChange('run_outs', parseInt(e.target.value) || 0)}
-                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Skills Rating */}
-                  <div>
-                    <h4 className="text-xs font-semibold text-gray-900 mb-2">Skills Rating</h4>
-                    <div className="space-y-2">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Batting Skill</label>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={editFormData.batting_skill}
-                          onChange={(e) => handleInputChange('batting_skill', parseInt(e.target.value))}
-                          className="w-full"
-                        />
-                        <div className="text-center text-xs text-gray-600">{editFormData.batting_skill}%</div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Bowling Skill</label>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={editFormData.bowling_skill}
-                          onChange={(e) => handleInputChange('bowling_skill', parseInt(e.target.value))}
-                          className="w-full"
-                        />
-                        <div className="text-center text-xs text-gray-600">{editFormData.bowling_skill}%</div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Fielding Skill</label>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={editFormData.fielding_skill}
-                          onChange={(e) => handleInputChange('fielding_skill', parseInt(e.target.value))}
-                          className="w-full"
-                        />
-                        <div className="text-center text-xs text-gray-600">{editFormData.fielding_skill}%</div>
-                      </div>
-                    </div>
-                  </div>
+                <div className="text-left sm:text-right">
+                  <span className="text-xs sm:text-sm text-gray-500">Today</span>
                 </div>
-
-                {/* Form Actions */}
-                <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-                  <button
-                    type="button"
-                    onClick={handleCancelEdit}
-                    className="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-50"
-                  >
-                    {loading ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : (
-                      <Save className="w-3 h-3" />
-                    )}
-                    <span>{loading ? 'Saving...' : 'Save'}</span>
-                  </button>
-                </div>
-              </form>
+              </div>
             </div>
           </div>
         </div>
-      )}
+
+       
+      </div>
+
+      {/* Modals */}
+      <AddAchievementModal
+        isOpen={showAddAchievement}
+        onClose={() => setShowAddAchievement(false)}
+        onSave={handleAddAchievement}
+      />
+      
+      <AddExperienceModal
+        isOpen={showAddExperience}
+        onClose={() => setShowAddExperience(false)}
+        onSave={handleAddExperience}
+      />
+      
+      <EditCricketStatsModal
+        isOpen={showEditStats}
+        onClose={() => setShowEditStats(false)}
+        onSave={handleSaveCricketStats}
+        currentStats={profileData}
+      />
+      
+      <PersonalInfoModal
+        isOpen={showPersonalInfo}
+        onClose={() => setShowPersonalInfo(false)}
+        profileData={profileData}
+        firebaseUser={firebaseUser}
+      />
+      
+      <ImageUploadModal
+        isOpen={showImageUpload}
+        onClose={() => setShowImageUpload(false)}
+        onSave={handleImageUpload}
+      />
     </div>
   );
 }

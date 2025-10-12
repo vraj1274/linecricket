@@ -94,7 +94,7 @@ export function HomePage({ isPopupVisible = false, onProfileClick, refreshTrigge
       </div>
 
       {/* Posts Timeline */}
-      <PostsFeed />
+      <PostsFeed onNavigateToProfile={onProfileClick} />
     </div>
   );
 }

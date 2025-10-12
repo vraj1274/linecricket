@@ -17,14 +17,16 @@ interface Post {
     id: string;
     username: string;
     initials: string;
+    type?: 'player' | 'coach' | 'venue' | 'academy' | 'community';
   };
 }
 
 interface PostsFeedProps {
   className?: string;
+  onNavigateToProfile?: (profileId: string, profileType: 'player' | 'coach' | 'venue' | 'academy' | 'community') => void;
 }
 
-export function PostsFeed({ className = "" }: PostsFeedProps) {
+export function PostsFeed({ className = "", onNavigateToProfile }: PostsFeedProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -65,7 +67,7 @@ export function PostsFeed({ className = "" }: PostsFeedProps) {
     <div className={`space-y-4 ${className}`}>
       
       {posts.map((post) => (
-        <PostCard key={post.id} post={post} />
+        <PostCard key={post.id} post={post} onNavigateToProfile={onNavigateToProfile} />
       ))}
       
       {isLoading && (

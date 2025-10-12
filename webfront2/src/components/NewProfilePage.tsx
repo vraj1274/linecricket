@@ -17,12 +17,12 @@ interface NewProfilePageProps {
 type ProfileType = 'player' | 'coach' | 'venue' | 'academy' | 'community';
 
 // Validation functions
-const isEmailValid(formData.email) = (email: string): boolean => {
+const isEmailValid = (email: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 };
 
-const isPasswordValid(formData.password) = (password: string): boolean => {
+const isPasswordValid = (password: string): boolean => {
   return password.length >= 8;
 };
 
@@ -649,7 +649,7 @@ function ProfileForm({ profileType, onSubmit, isCreating, onCancel }: ProfileFor
   const [isFormValid, setIsFormValid] = useState(false);
 
   const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev: any) => ({ ...prev, [field]: value }));
     validateForm({ ...formData, [field]: value });
   };
 
@@ -788,7 +788,7 @@ function CoachProfileForm({ formData, onChange }: FormComponentProps) {
             onChange={(e) => onChange('email', e.target.value)}
             className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent ${
               formData.email 
-                ? isEmailValid(formData.email)(formData.email)
+                ? isEmailValid(formData.email)
                   ? 'border-green-300 focus:ring-green-500 bg-green-50' 
                   : 'border-red-300 focus:ring-red-500 bg-red-50'
                 : 'border-gray-300 focus:ring-blue-500'
@@ -850,8 +850,8 @@ function CoachProfileForm({ formData, onChange }: FormComponentProps) {
 
 // Venue Profile Form Component - Simplified to basic auth fields only
 function VenueProfileForm({ formData, onChange }: FormComponentProps) {
-  const isEmailValid(formData.email) = formData.email && formData.email.includes('@');
-  const isPasswordValid(formData.password) = formData.password && formData.password.length >= 6;
+  const isEmailValid = formData.email && formData.email.includes('@');
+  const isPasswordValid = formData.password && formData.password.length >= 6;
 
   return (
     <div className="space-y-6">
@@ -927,8 +927,8 @@ function VenueProfileForm({ formData, onChange }: FormComponentProps) {
 
 // Academy Profile Form Component - Simplified to basic auth fields only
 function AcademyProfileForm({ formData, onChange }: FormComponentProps) {
-  const isEmailValid(formData.email) = formData.email && formData.email.includes('@');
-  const isPasswordValid(formData.password) = formData.password && formData.password.length >= 6;
+  const isEmailValid = formData.email && formData.email.includes('@');
+  const isPasswordValid = formData.password && formData.password.length >= 6;
 
   return (
     <div className="space-y-6">
@@ -1004,8 +1004,8 @@ function AcademyProfileForm({ formData, onChange }: FormComponentProps) {
 
 // Player Profile Form Component - Simplified to basic auth fields only
 function PlayerProfileForm({ formData, onChange }: FormComponentProps) {
-  const isEmailValid(formData.email) = formData.email && formData.email.includes('@');
-  const isPasswordValid(formData.password) = formData.password && formData.password.length >= 6;
+  const isEmailValid = formData.email && formData.email.includes('@');
+  const isPasswordValid = formData.password && formData.password.length >= 6;
 
   return (
     <div className="space-y-6">
@@ -1081,8 +1081,8 @@ function PlayerProfileForm({ formData, onChange }: FormComponentProps) {
 
 // Community Profile Form Component - Simplified to basic auth fields only
 function CommunityProfileForm({ formData, onChange }: FormComponentProps) {
-  const isEmailValid(formData.email) = formData.email && formData.email.includes('@');
-  const isPasswordValid(formData.password) = formData.password && formData.password.length >= 6;
+  const isEmailValid = formData.email && formData.email.includes('@');
+  const isPasswordValid = formData.password && formData.password.length >= 6;
 
   return (
     <div className="space-y-6">

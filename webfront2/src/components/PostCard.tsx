@@ -21,6 +21,7 @@ interface Post {
     id: string;
     username: string;
     initials: string;
+    type?: 'player' | 'coach' | 'venue' | 'academy' | 'community';
   };
   is_liked?: boolean;
   is_bookmarked?: boolean;
@@ -29,9 +30,10 @@ interface Post {
 
 interface PostCardProps {
   post: Post;
+  onNavigateToProfile?: (profileId: string, profileType: 'player' | 'coach' | 'venue' | 'academy' | 'community') => void;
 }
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, onNavigateToProfile }: PostCardProps) {
   const [isLiked, setIsLiked] = useState(post.is_liked || false);
   const [likesCount, setLikesCount] = useState(post.likes_count || 0);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,8 +58,13 @@ export function PostCard({ post }: PostCardProps) {
   };
 
   const handleProfileClick = () => {
-    // Navigate to user profile
-    window.location.href = `/profile/${post.author.id}`;
+    if (onNavigateToProfile && post.author.type) {
+      // Use the navigation function from App.tsx
+      onNavigateToProfile(post.author.id, post.author.type);
+    } else {
+      // Fallback to direct URL navigation
+      window.location.href = `/profile/${post.author.id}`;
+    }
   };
 
   const handleLike = async () => {

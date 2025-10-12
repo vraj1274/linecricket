@@ -193,3 +193,5 @@ The search module is now fully functional with:
 The implementation provides a comprehensive search experience across all content types in the cricket application, with proper database integration and user-friendly interface.
 
 
+
+
