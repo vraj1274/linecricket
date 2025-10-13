@@ -1,7 +1,8 @@
 import { BarChart3, Bell, Check, Home, Loader2, MessageCircle, MoreHorizontal, Plus, Search, User, Users, Building2, MapPin, Globe, Trash2, AlertTriangle, Eye, EyeOff, Lock } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { PageType } from '../App';
-import newIcon from '../assets/newiconfinal.svg';
+import newIcon from '../assets/logo.svg';
+import Logo from '../assets/logo.svg';
 import { useMobileApp } from '../contexts/MobileAppContext';
 import { useUserProfile } from '../contexts/UserProfileContext';
 import { useFirebase } from '../contexts/FirebaseContext';
@@ -167,10 +168,10 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
             {/* Logo */}
             <div className="mb-8">
               <h1 className="flex items-center text-2xl font-bold bg-gradient-to-r from-orange-500 to-slate-600 bg-clip-text text-transparent">
-                <img src={newIcon} alt="TheLineCricket" className="h-8 w-8 mr-3" />
-                TheLineCricket
+                <img src={Logo} alt="TheLineCricket" className="h-700 w-600 mr-3" />
+                {/* TheLineCricket */}
               </h1>
-              <p className="text-sm text-gray-500 mt-1" text-align="center">Learn . Play . Connect.</p>
+              {/* <p className="text-sm text-gray-500 mt-1" text-align="center">Learn . Play . Connect.</p> */}
             </div>
             
             {/* Navigation Menu */}

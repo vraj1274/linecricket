@@ -1,6 +1,7 @@
 import React from "react";
 import { Button } from "./ui/button";
 import newIcon from "../assets/newiconfinal.svg";
+import logo from "../assets/logo.svg";
 
 interface LandingHeaderProps {
   onNavigateToLogin: () => void;

@@ -1,8 +1,10 @@
 import { Eye, EyeOff } from 'lucide-react';
 import React, { useState } from 'react';
 import newIcon from '../assets/newiconfinal.svg';
+import logo from '../assets/logo.svg';
 import { useFirebaseAuth } from '../hooks/useFirebaseAuth';
 import { firebaseBackendSync } from '../services/firebaseBackendSync';
+import Logo from './Logo';
 
 interface LoginPageProps {
   onLogin: () => void;

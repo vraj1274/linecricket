@@ -1,5 +1,5 @@
 
-import newIcon from '../assets/newiconfinal.svg';
+import newIcon from '../assets/logo.svg';
 
 interface LogoProps {
   size?: 'small' | 'medium' | 'large' | 'xlarge' | 'hero';
