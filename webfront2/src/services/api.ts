@@ -6,23 +6,39 @@ class ApiService {
     try {
       // Try to get Firebase ID token first
       const user = auth.currentUser;
+      console.log('🔐 Getting auth headers - Firebase user:', user ? 'exists' : 'null');
+      
       if (user) {
         const idToken = await user.getIdToken();
+        console.log('🔐 Firebase ID token obtained:', idToken ? 'yes' : 'no');
+        
+        if (!idToken) {
+          throw new Error('Failed to get Firebase ID token');
+        }
+        
         return {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${idToken}`
         };
+      } else {
+        throw new Error('No Firebase user found');
       }
     } catch (error) {
-      console.warn('Failed to get Firebase ID token:', error);
+      console.error('❌ Failed to get Firebase auth:', error);
+      
+      // Fallback to localStorage token
+      const token = localStorage.getItem('authToken');
+      console.log('🔐 Using localStorage token fallback:', token ? 'exists' : 'null');
+      
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+      
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      };
     }
-    
-    // Fallback to localStorage token
-    const token = localStorage.getItem('authToken');
-    return {
-      'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` })
-    };
   }
 
   isAuthenticated(): boolean {
@@ -207,7 +223,8 @@ class ApiService {
       url,
       method: options.method || 'GET',
       headers: Object.keys(headers),
-      hasAuth: !!(headers as Record<string, string>).Authorization
+      hasAuth: !!(headers as Record<string, string>).Authorization,
+      authHeader: (headers as Record<string, string>).Authorization ? 'Bearer ***' : 'none'
     });
     
     try {
@@ -221,7 +238,9 @@ class ApiService {
           ...headers,
           ...options.headers,
         },
-        signal: controller.signal
+        signal: controller.signal,
+        mode: 'cors',
+        credentials: 'include'
       });
       
       clearTimeout(timeoutId);
@@ -497,6 +516,62 @@ class ApiService {
     localStorage.removeItem('authToken');
   }
 
+  // Check if backend is available
+  async checkBackendHealth() {
+    try {
+      console.log('🏥 Checking backend health at:', `${API_BASE_URL}/api/users/test`);
+      const response = await fetch(`${API_BASE_URL}/api/users/test`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        mode: 'cors',
+        credentials: 'include'
+      });
+      console.log('🏥 Health check response:', response.status, response.statusText);
+      return response.ok;
+    } catch (error) {
+      console.warn('🏥 Backend health check failed:', error);
+      return false;
+    }
+  }
+
+  // Sync user with Firebase to ensure they exist in database
+  async syncUserWithFirebase() {
+    console.log('🔄 Syncing user with Firebase...');
+    
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('No Firebase user found');
+      }
+
+      const idToken = await user.getIdToken();
+      
+      const response = await this.makeRequest(`${API_BASE_URL}/api/firebase-auth/verify-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id_token: idToken,
+          firebase_uid: user.uid,
+          email: user.email,
+          displayName: user.displayName
+        })
+      });
+      
+      console.log('📡 Sync response:', response);
+      const data = await this.handleResponse(response);
+      console.log('📋 Sync data:', data);
+      
+      return data;
+    } catch (error) {
+      console.error('❌ Error syncing user with Firebase:', error);
+      throw error;
+    }
+  }
+
   // Profile API
   async getCurrentUserProfile() {
     console.log('🔄 Getting current user profile with Firebase auth...');
@@ -594,15 +669,17 @@ class ApiService {
     console.log('📋 Profile data being sent:', profileData);
     
     try {
+      const authHeaders = await this.getAuthHeaders();
       const response = await this.makeRequest(`${API_BASE_URL}/api/users/profile`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authHeaders,
         body: JSON.stringify(profileData)
       });
       
       console.log('📡 Raw update response:', response);
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+      
       const data = await this.handleResponse(response);
       console.log('📋 Processed update data:', data);
       
@@ -649,6 +726,46 @@ class ApiService {
       
     } catch (error) {
       console.error('❌ Error in updateUserProfile:', error);
+      throw error;
+    }
+  }
+
+  // Upload profile image
+  async uploadProfileImage(imageFile: File): Promise<{ success: boolean; imageUrl?: string; message?: string }> {
+    try {
+      console.log('📸 Uploading profile image:', imageFile.name);
+      
+      const formData = new FormData();
+      formData.append('profile_image', imageFile);
+      
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('No authenticated user');
+      }
+      
+      const idToken = await user.getIdToken();
+      
+      const response = await fetch(`${API_BASE_URL}/api/users/upload-profile-image`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: formData
+      });
+      
+      console.log('📋 Image upload response status:', response.status);
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Image uploaded successfully:', result);
+        return { success: true, imageUrl: result.imageUrl, message: result.message };
+      } else {
+        const errorData = await response.json().catch(() => ({ message: 'Upload failed' }));
+        console.error('❌ Image upload failed:', errorData);
+        throw new Error(errorData.message || `HTTP ${response.status}: Image upload failed`);
+      }
+    } catch (error) {
+      console.error('❌ Image upload error:', error);
       throw error;
     }
   }
@@ -784,6 +901,66 @@ class ApiService {
       method: 'DELETE'
     });
     return this.handleResponse(response);
+  }
+
+  async getExperiences() {
+    console.log('🔄 API: Getting experiences...');
+    try {
+      // Try with authentication first
+      const response = await this.makeRequest(`${API_BASE_URL}/api/users/profile/experiences`, {
+        method: 'GET'
+      });
+      console.log('📡 API: Experiences response:', response);
+      return this.handleResponse(response);
+    } catch (error) {
+      console.error('❌ API: Error getting experiences:', error);
+      // Fallback: try without authentication
+      try {
+        console.log('🔄 API: Trying experiences without auth...');
+        const response = await fetch(`${API_BASE_URL}/api/users/profile/experiences`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+        const data = await response.json();
+        console.log('📡 API: Experiences fallback response:', data);
+        return data;
+      } catch (fallbackError) {
+        console.error('❌ API: Fallback also failed:', fallbackError);
+        throw error;
+      }
+    }
+  }
+
+  async getAchievements() {
+    console.log('🔄 API: Getting achievements...');
+    try {
+      // Try with authentication first
+      const response = await this.makeRequest(`${API_BASE_URL}/api/users/profile/achievements`, {
+        method: 'GET'
+      });
+      console.log('📡 API: Achievements response:', response);
+      return this.handleResponse(response);
+    } catch (error) {
+      console.error('❌ API: Error getting achievements:', error);
+      // Fallback: try without authentication
+      try {
+        console.log('🔄 API: Trying achievements without auth...');
+        const response = await fetch(`${API_BASE_URL}/api/users/profile/achievements`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+        const data = await response.json();
+        console.log('📡 API: Achievements fallback response:', data);
+        return data;
+      } catch (fallbackError) {
+        console.error('❌ API: Fallback also failed:', fallbackError);
+        throw error;
+      }
+    }
   }
 
   async getUserProfile(userId: number) {

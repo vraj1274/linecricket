@@ -224,9 +224,9 @@ export function UserProfileView({ onEditProfile, onNavigateToPersonalInfo }: Use
             </div>
             <button
               onClick={onNavigateToPersonalInfo}
-              className="flex items-center space-x-1 px-3 py-1.5 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 transition-colors"
+              className="flex items-center space-x-1 px-3 py-1.5 bg-blue-500 text-gray-900 text-xs rounded-lg hover:bg-blue-600 transition-colors"
             >
-              <User className="w-3 h-3" />
+              <User className="w-3 h-3 text-gray-900" />
               <span>View</span>
             </button>
           </div>

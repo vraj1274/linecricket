@@ -190,6 +190,29 @@ export function EditProfilePage({ onBack }: EditProfilePageProps) {
         isVerified: false,
         profileImage: null,
       });
+    } else {
+      // Fallback: Try to load from localStorage
+      console.log('📋 No context or Firebase data, trying localStorage fallback...');
+      try {
+        const savedData = localStorage.getItem('userProfile');
+        if (savedData) {
+          const parsedData = JSON.parse(savedData);
+          console.log('📋 Loaded data from localStorage:', parsedData);
+          
+          // Update form data with saved data
+          if (parsedData.fullName) setFormData(prev => ({ ...prev, fullName: parsedData.fullName }));
+          if (parsedData.username) setFormData(prev => ({ ...prev, username: parsedData.username }));
+          if (parsedData.bio) setFormData(prev => ({ ...prev, bio: parsedData.bio }));
+          if (parsedData.location) setFormData(prev => ({ ...prev, location: parsedData.location }));
+          if (parsedData.organization) setFormData(prev => ({ ...prev, organization: parsedData.organization }));
+          if (parsedData.age) setFormData(prev => ({ ...prev, age: parsedData.age }));
+          if (parsedData.gender) setFormData(prev => ({ ...prev, gender: parsedData.gender }));
+          if (parsedData.contact) setFormData(prev => ({ ...prev, contact: parsedData.contact }));
+          if (parsedData.email) setFormData(prev => ({ ...prev, email: parsedData.email }));
+        }
+      } catch (error) {
+        console.warn('⚠️ Failed to load from localStorage:', error);
+      }
     }
   }, [userProfile]);
 
@@ -273,6 +296,60 @@ export function EditProfilePage({ onBack }: EditProfilePageProps) {
     }
 
     return errors;
+  };
+
+  // Test function to debug the save process
+  const handleTestSave = async () => {
+    console.log('🧪 Testing profile save with minimal data...');
+    
+    const firebaseUser = auth.currentUser;
+    const testData = {
+      username: userProfile?.username || 'testuser',
+      full_name: userProfile?.profile?.full_name || 'Test User',
+      bio: 'Test bio'
+    };
+    
+    try {
+      console.log('🧪 Test data:', testData);
+      console.log('🧪 API Base URL:', 'http://localhost:5000');
+      
+      // Check authentication status
+      console.log('🧪 Checking authentication...');
+      console.log('🧪 Firebase user:', firebaseUser);
+      console.log('🧪 User profile:', userProfile);
+      console.log('🧪 Is authenticated:', apiService.isAuthenticated());
+      
+      // First test the sync
+      console.log('🧪 Testing user sync...');
+      const syncResponse = await apiService.syncUserWithFirebase();
+      console.log('🧪 Sync response:', syncResponse);
+      
+      // Then test the update
+      console.log('🧪 Testing profile update...');
+      try {
+        const response = await apiService.updateUserProfile(testData);
+        console.log('🧪 Test response:', response);
+        showSuccess('Test Complete', 'Test save completed - check console for details');
+      } catch (error) {
+        console.warn('🧪 API test failed, using fallback:', error);
+        
+        // Fallback: Update local profile data
+        if (updateProfile) {
+          await updateProfile(testData);
+          console.log('🧪 Local profile updated successfully');
+        }
+        
+        showSuccess('Test Complete', 'Test save completed with fallback method - check console for details');
+      }
+    } catch (error) {
+      console.error('🧪 Test error:', error);
+      console.error('🧪 Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : undefined
+      });
+      showError('Test Failed', `Test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -373,32 +450,98 @@ export function EditProfilePage({ onBack }: EditProfilePageProps) {
         dataKeys: Object.keys(profileData)
       });
       
-      // Retry mechanism for network failures
-      let updatedProfile = null;
-      let retryCount = 0;
-      const maxRetries = 3;
+      // Try API call directly first, don't rely on health check
+      console.log('🔄 Attempting direct API call to update profile...');
       
-      while (retryCount < maxRetries && !updatedProfile) {
-        try {
-          console.log(`🔄 Attempt ${retryCount + 1}/${maxRetries} to update profile...`);
-          updatedProfile = await updateProfile(profileData);
-          console.log('✅ Profile update successful on attempt', retryCount + 1);
-        } catch (retryError) {
-          retryCount++;
-          console.error(`❌ Attempt ${retryCount} failed:`, retryError);
-          
-          if (retryCount < maxRetries) {
-            console.log(`⏳ Waiting 2 seconds before retry ${retryCount + 1}...`);
-            await new Promise(resolve => setTimeout(resolve, 2000));
-          } else {
-            console.error('❌ All retry attempts failed, throwing error');
-            throw retryError;
-          }
-        }
+      // First, ensure user exists in database by syncing with Firebase
+      console.log('🔄 Syncing user with Firebase first...');
+      try {
+        const syncResponse = await apiService.syncUserWithFirebase();
+        console.log('📡 Sync response:', syncResponse);
+        console.log('✅ User sync successful, proceeding with profile update');
+      } catch (syncError) {
+        console.warn('⚠️ User sync failed, but continuing with profile update:', syncError);
+        // Don't fail here, continue with the update attempt
       }
       
-      if (updatedProfile !== null) {
-        console.log('✅ Profile updated successfully with enhanced data');
+      // Try API call to save data
+      console.log('🔄 Making direct API call to update profile...');
+      console.log('📋 Profile data being sent:', JSON.stringify(profileData, null, 2));
+      
+      let apiResponse;
+      try {
+        console.log('🔄 Attempting API call to update profile...');
+        apiResponse = await apiService.updateUserProfile(profileData);
+        console.log('📡 API response:', apiResponse);
+        console.log('📡 API response type:', typeof apiResponse);
+        console.log('📡 API response keys:', apiResponse ? Object.keys(apiResponse) : 'null');
+        console.log('📡 API response stringified:', JSON.stringify(apiResponse, null, 2));
+      } catch (apiError) {
+        console.error('❌ API call failed:', apiError);
+        console.warn('⚠️ API call failed, attempting fallback methods...');
+        
+        // Try to get more specific error information
+        let errorMessage = 'Unknown error';
+        if (apiError instanceof Error) {
+          errorMessage = apiError.message;
+        }
+        console.log('🔍 Error details:', errorMessage);
+        
+        // Check if it's a network error vs authentication error
+        if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
+          console.log('🌐 Network error detected - backend might be down');
+          showError('Network Error', 'Cannot connect to server. Please check your internet connection and try again.');
+        } else if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+          console.log('🔐 Authentication error detected');
+          showError('Authentication Error', 'Please log in again to save your profile changes.');
+        } else {
+          console.log('❓ Other error:', errorMessage);
+          showError('Save Error', `Failed to save profile: ${errorMessage}`);
+        }
+        
+        // Still try fallback methods
+        console.log('🔄 Attempting fallback methods...');
+        
+        // Try context update first
+        if (updateProfile) {
+          try {
+            await updateProfile(profileData);
+            console.log('✅ Local profile updated successfully via context');
+            showSuccess('Profile Updated', 'Your profile has been updated locally. Changes will sync when connection is restored.');
+          } catch (contextError) {
+            console.warn('⚠️ Context update failed, using localStorage fallback:', contextError);
+            
+            // Additional localStorage fallback for data persistence
+            try {
+              const existingData = JSON.parse(localStorage.getItem('userProfile') || '{}');
+              const updatedData = { ...existingData, ...profileData, lastUpdated: new Date().toISOString() };
+              localStorage.setItem('userProfile', JSON.stringify(updatedData));
+              console.log('✅ Profile data saved to localStorage as backup');
+              showSuccess('Profile Updated', 'Your profile has been saved locally. Changes will sync when connection is restored.');
+            } catch (storageError) {
+              console.warn('⚠️ localStorage fallback failed:', storageError);
+              showError('Save Failed', 'Unable to save profile changes. Please try again.');
+            }
+          }
+        }
+        
+        // Navigate back after a short delay
+        setTimeout(() => {
+          onBack();
+        }, 2000);
+        return;
+      }
+      
+      // Check if the response indicates success
+      const isSuccess = apiResponse && (
+        apiResponse.user || 
+        apiResponse.success || 
+        apiResponse.message === 'Profile updated successfully' ||
+        (apiResponse.data && apiResponse.data.user)
+      );
+      
+      if (isSuccess) {
+        console.log('✅ API update successful');
         setSubmitSuccess(true);
         
         // Refresh profile to ensure all components have latest data
@@ -407,20 +550,15 @@ export function EditProfilePage({ onBack }: EditProfilePageProps) {
         console.log('✅ Profile refreshed successfully');
         
         // Show success notification
-        showSuccess('Profile Updated', 'All changes have been saved successfully!');
+        showSuccess('Profile Updated', 'Your profile has been updated successfully and saved to the database!');
         
-        // Show success message briefly then navigate back
+        // Navigate back after a short delay
         setTimeout(() => {
           onBack();
         }, 1500);
       } else {
-        console.warn('⚠️ Profile update returned null, but no error thrown');
-        // Still show success if no error was thrown
-        setSubmitSuccess(true);
-        showSuccess('Profile Updated', 'Changes have been saved!');
-        setTimeout(() => {
-          onBack();
-        }, 1500);
+        console.error('❌ Invalid response structure:', apiResponse);
+        throw new Error(`Failed to update profile - invalid response: ${JSON.stringify(apiResponse)}`);
       }
     } catch (error) {
       console.error('❌ Error updating profile:', error);
@@ -1313,6 +1451,30 @@ export function EditProfilePage({ onBack }: EditProfilePageProps) {
               className="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleTestSave}
+              className="px-4 py-2 text-sm bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors"
+            >
+              Test Save
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                console.log('🧪 Testing API connection...');
+                try {
+                  const isHealthy = await apiService.checkBackendHealth();
+                  console.log('🏥 Backend health:', isHealthy);
+                  showSuccess('API Test', `Backend is ${isHealthy ? 'available' : 'unavailable'}`);
+                } catch (error) {
+                  console.error('🧪 API test failed:', error);
+                  showError('API Test Failed', error instanceof Error ? error.message : 'Unknown error');
+                }
+              }}
+              className="px-4 py-2 text-sm bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors"
+            >
+              Test API
             </button>
             <button
               type="submit"

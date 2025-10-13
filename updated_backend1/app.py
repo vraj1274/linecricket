@@ -45,7 +45,7 @@ from models import db
 # Initialize extensions
 migrate = Migrate()
 jwt = JWTManager()
-CORS(app, origins=['http://localhost:3000', 'http://localhost:3001'], supports_credentials=True)
+CORS(app, origins=['http://localhost:*', 'http://127.0.0.1:*'], supports_credentials=True)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

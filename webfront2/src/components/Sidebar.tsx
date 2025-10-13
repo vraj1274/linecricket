@@ -6,6 +6,7 @@ import { useMobileApp } from '../contexts/MobileAppContext';
 import { useUserProfile } from '../contexts/UserProfileContext';
 import { useFirebase } from '../contexts/FirebaseContext';
 import { useProfileSwitch } from '../contexts/ProfileSwitchContext';
+import { AppDownloadModal } from './AppDownloadModal';
 
 interface SidebarProps {
   currentPage: PageType;
@@ -18,6 +19,8 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showProfileSwitch, setShowProfileSwitch] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showAppDownloadModal, setShowAppDownloadModal] = useState(false);
+  const [modalFeature, setModalFeature] = useState('');
   const { showMobileAppModal } = useMobileApp();
   
   // Get real user data from contexts
@@ -108,7 +111,20 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
   };
 
   const handleMenuItemClick = (pageId: PageType) => {
-    // All pages now navigate directly without popup restrictions
+    // Show download app modal for Messages and Notifications
+    if (pageId === 'messages') {
+      setModalFeature('Messages');
+      setShowAppDownloadModal(true);
+      return;
+    }
+    
+    if (pageId === 'notifications') {
+      setModalFeature('Notifications');
+      setShowAppDownloadModal(true);
+      return;
+    }
+    
+    // All other pages navigate directly
     onPageChange(pageId);
   };
 
@@ -186,7 +202,7 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
               <div className="flex items-center space-x-1">
                 <button 
                   onClick={() => setShowProfileSwitch(!showProfileSwitch)}
-                  className="p-1 hover:bg-gray-100 rounded-lg"
+                  className="p-1 hover:bg-orange-100 hover:text-orange-600 rounded-lg transition-all duration-200 ease-in-out"
                   title="Switch Profile"
                   aria-label="Switch Profile"
                 >
@@ -194,7 +210,7 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
                 </button>
                 <button 
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
+                  className="p-2 hover:bg-orange-100 hover:text-orange-600 rounded-lg transition-all duration-200 ease-in-out"
                   title="Profile Menu"
                   aria-label="Profile Menu"
                 >
@@ -210,9 +226,9 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
       {showProfileSwitch && (
         <div className="fixed bottom-20 left-6 bg-white rounded-xl shadow-lg border border-gray-200 z-50 w-72 backdrop-blur-none">
           <div className="py-2">
-            <div className="px-4 py-3 border-b border-gray-100">
+            <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-orange-50 to-slate-50">
               <div className="flex items-center space-x-2">
-                <Users className="w-4 h-4 text-gray-600" />
+                <Users className="w-4 h-4 text-orange-600" />
                 <h3 className="text-sm font-semibold text-gray-900">My Pages</h3>
               </div>
               <p className="text-xs text-gray-500 mt-1">
@@ -254,8 +270,8 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
                       setShowProfileSwitch(false);
                     }
                   }}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                    profile.isActive ? 'bg-blue-50' : ''
+                  className={`w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-orange-50 hover:text-orange-700 transition-all duration-200 ease-in-out ${
+                    profile.isActive ? 'bg-orange-100 border-l-4 border-orange-500' : ''
                   }`}
                 >
                   <div 
@@ -267,7 +283,7 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
                   <div className="flex-1">
                     <div className="flex items-center space-x-2">
                       <p className="text-sm text-gray-900">{profile.name}</p>
-                      {profile.isActive && <Check className="w-4 h-4 text-blue-600" />}
+                      {profile.isActive && <Check className="w-4 h-4 text-orange-600" />}
                     </div>
                     <p className="text-xs text-gray-500">{profile.username}</p>
                     <p className="text-xs text-gray-400 capitalize">
@@ -287,7 +303,7 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
                     onPageChange('my-profile');
                     setShowProfileSwitch(false);
                   }}
-                  className="w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors bg-blue-50"
+                  className="w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-orange-50 hover:text-orange-700 transition-all duration-200 ease-in-out bg-orange-100 border-l-4 border-orange-500"
                 >
                   <div 
                     className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold"
@@ -298,7 +314,7 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
                   <div className="flex-1">
                     <div className="flex items-center space-x-2">
                       <p className="text-sm text-gray-900">My Pages</p>
-                      <Check className="w-4 h-4 text-blue-600" />
+                      <Check className="w-4 h-4 text-orange-600" />
                     </div>
                     <p className="text-xs text-gray-500">{currentUser.username}</p>
                     <p className="text-xs text-gray-400">Personal Pages</p>
@@ -316,10 +332,10 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
         <div className="fixed bottom-20 left-6 bg-white rounded-xl shadow-lg border border-gray-200 z-50 w-72 backdrop-blur-none">
           <div className="py-2">
             {/* Current User Profile Info */}
-            <div className="px-4 py-3 border-b border-gray-100">
+            <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-orange-50 to-slate-50">
               <div className="flex items-center space-x-3">
                 <div 
-                  className="w-12 h-12 rounded-full flex items-center justify-center text-white text-sm font-semibold"
+                  className="w-12 h-12 rounded-full flex items-center justify-center text-white text-sm font-semibold shadow-lg"
                   style={{ background: currentUser.color }}
                 >
                   {currentUser.avatar}
@@ -329,7 +345,7 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
                   <p className="text-xs text-gray-500">{currentUser.username}</p>
                   <p className="text-xs text-gray-400">{currentUser.role}</p>
                 </div>
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <div className="w-3 h-3 bg-green-500 rounded-full shadow-sm"></div>
               </div>
               <div className="mt-2 text-xs text-gray-500">
                 <p>Email: {currentUser.email}</p>
@@ -346,7 +362,7 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
             
             <button 
               onClick={handleShowHelpCenter}
-              className="w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+              className="w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-orange-50 hover:text-orange-700 transition-all duration-200 ease-in-out"
             >
               <div>
                 <p className="text-sm text-gray-900">Help Center</p>
@@ -359,7 +375,7 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
                 onPageChange('edit-profile');
                 setShowProfileMenu(false);
               }}
-              className="w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+              className="w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-orange-50 hover:text-orange-700 transition-all duration-200 ease-in-out"
             >
               <div>
                 <p className="text-sm text-gray-900">Edit Profile</p>
@@ -371,7 +387,7 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
               <button 
                 onClick={handleLogout}
                 disabled={isLoggingOut}
-                className="w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-red-50 transition-colors text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-red-50 hover:text-red-700 transition-all duration-200 ease-in-out text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="flex items-center space-x-2">
                   {isLoggingOut && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -396,6 +412,13 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
           }}
         />
       )}
+      
+      {/* App Download Modal */}
+      <AppDownloadModal
+        isOpen={showAppDownloadModal}
+        onClose={() => setShowAppDownloadModal(false)}
+        feature={modalFeature}
+      />
     </>
   );
 }

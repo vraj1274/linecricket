@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, Heart, MessageCircle, MoreHorizontal, Grid3X3, List, Edit2, Save, X, Plus, Trash2, Shield, User, Calendar, MapPin, Mail, Phone, Award, Trophy, Target, Users, Clock } from 'lucide-react';
+import { CheckCircle, Heart, MessageCircle, MoreHorizontal, Grid3X3, List, Edit2, Save, X, Plus, Trash2, Shield, User, Calendar, MapPin, Mail, Phone, Award, Trophy, Target, Users, Clock, Camera, Edit3 } from 'lucide-react';
 import { useMobileApp } from '../contexts/MobileAppContext';
 import { useUserProfile } from '../contexts/UserProfileContext';
+import { PhotoUploadModal } from './PhotoUploadModal';
 
 interface ProfileViewProps {
   onNavigateToPersonalInfo?: () => void;
@@ -11,6 +12,7 @@ export function ProfileView({ onNavigateToPersonalInfo }: ProfileViewProps) {
   const [showAllPosts, setShowAllPosts] = useState(false);
   const [postViewMode, setPostViewMode] = useState<'grid' | 'list'>('grid');
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showPhotoUpload, setShowPhotoUpload] = useState(false);
   const { showMobileAppModal } = useMobileApp();
   const { userProfile, loading, updateProfile, addExperience, updateExperience, deleteExperience, addAchievement, updateAchievement, deleteAchievement, refreshProfile } = useUserProfile();
 
@@ -106,11 +108,24 @@ export function ProfileView({ onNavigateToPersonalInfo }: ProfileViewProps) {
     setPostViewMode(postViewMode === 'grid' ? 'list' : 'grid');
   };
 
+  const handlePhotoUpload = async (photoUrl: string) => {
+    try {
+      await updateProfile({ profile_image_url: photoUrl });
+      setShowPhotoUpload(false);
+    } catch (error) {
+      console.error('Error updating profile photo:', error);
+    }
+  };
+
+  const handlePhotoClick = () => {
+    setShowPhotoUpload(true);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading profile...</p>
         </div>
       </div>
@@ -123,12 +138,26 @@ export function ProfileView({ onNavigateToPersonalInfo }: ProfileViewProps) {
         {/* Profile Header */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex items-center space-x-4 mb-6">
-            <div className="relative">
-              <div className="w-16 h-16 bg-gray-600 rounded-full flex items-center justify-center text-white text-xl font-bold">
-                {userProfile?.profile?.full_name?.charAt(0) || 'K'}
-              </div>
+            <div className="relative group cursor-pointer" onClick={handlePhotoClick}>
+              {userProfile?.profile?.profile_image_url ? (
+                <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-gray-200 group-hover:border-orange-400 transition-colors">
+                  <img
+                    src={userProfile.profile.profile_image_url}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="w-16 h-16 bg-gray-600 rounded-full flex items-center justify-center text-white text-xl font-bold group-hover:bg-orange-500 transition-colors">
+                  {userProfile?.profile?.full_name?.charAt(0) || 'K'}
+                </div>
+              )}
               <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
                 <CheckCircle className="w-3 h-3 text-white" />
+              </div>
+              {/* Edit overlay */}
+              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 rounded-full flex items-center justify-center transition-all duration-200">
+                <Camera className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             </div>
             <div>
@@ -174,7 +203,7 @@ export function ProfileView({ onNavigateToPersonalInfo }: ProfileViewProps) {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
-              <Shield className="w-5 h-5 text-blue-600" />
+              <Shield className="w-5 h-5 text-orange-600" />
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Personal Information</h3>
                 <p className="text-sm text-gray-500">Private details visible only to you</p>
@@ -182,9 +211,10 @@ export function ProfileView({ onNavigateToPersonalInfo }: ProfileViewProps) {
             </div>
             <button
               onClick={handleViewPersonalInfo}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              className="flex items-center space-x-2 px-4 py-2 bg-orange-500 text-gray-900 rounded-lg hover:bg-orange-600 transition-colors"
+              style={{ backgroundColor: '#FF6B33' }}
             >
-              <Users className="w-4 h-4" />
+              <Users className="w-4 h-4 text-gray-900" />
               <span>View</span>
             </button>
           </div>
@@ -216,13 +246,13 @@ export function ProfileView({ onNavigateToPersonalInfo }: ProfileViewProps) {
             <div className="flex items-center space-x-2">
               <button
                 onClick={handleToggleViewMode}
-                className={`p-2 rounded-lg ${postViewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}`}
+                className={`p-2 rounded-lg ${postViewMode === 'grid' ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-600'}`}
               >
                 <Grid3X3 className="w-4 h-4" />
               </button>
               <button
                 onClick={handleToggleViewMode}
-                className={`p-2 rounded-lg ${postViewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}`}
+                className={`p-2 rounded-lg ${postViewMode === 'list' ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-600'}`}
               >
                 <List className="w-4 h-4" />
               </button>
@@ -240,54 +270,54 @@ export function ProfileView({ onNavigateToPersonalInfo }: ProfileViewProps) {
           
           {/* Batting Section */}
           <div className="mb-6">
-            <h4 className="text-md font-semibold text-blue-600 mb-4">BATTING</h4>
+            <h4 className="text-md font-semibold text-orange-600 mb-4">BATTING</h4>
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-blue-50 rounded-lg p-4">
+              <div className="bg-orange-50 rounded-lg p-4">
                 <div className="text-sm text-gray-600">Total Runs</div>
-                <div className="text-lg font-bold text-blue-600">{cricketStats.batting.totalRuns}</div>
+                <div className="text-lg font-bold text-orange-600">{cricketStats.batting.totalRuns}</div>
               </div>
-              <div className="bg-blue-50 rounded-lg p-4">
+              <div className="bg-orange-50 rounded-lg p-4">
                 <div className="text-sm text-gray-600">100s</div>
-                <div className="text-lg font-bold text-blue-600">{cricketStats.batting.hundreds}</div>
+                <div className="text-lg font-bold text-orange-600">{cricketStats.batting.hundreds}</div>
               </div>
-              <div className="bg-blue-50 rounded-lg p-4">
+              <div className="bg-orange-50 rounded-lg p-4">
                 <div className="text-sm text-gray-600">Average</div>
-                <div className="text-lg font-bold text-blue-600">{cricketStats.batting.average}</div>
+                <div className="text-lg font-bold text-orange-600">{cricketStats.batting.average}</div>
               </div>
-              <div className="bg-blue-50 rounded-lg p-4">
+              <div className="bg-orange-50 rounded-lg p-4">
                 <div className="text-sm text-gray-600">Matches</div>
-                <div className="text-lg font-bold text-blue-600">{cricketStats.batting.matches}</div>
+                <div className="text-lg font-bold text-orange-600">{cricketStats.batting.matches}</div>
               </div>
-              <div className="bg-blue-50 rounded-lg p-4">
+              <div className="bg-orange-50 rounded-lg p-4">
                 <div className="text-sm text-gray-600">50s</div>
-                <div className="text-lg font-bold text-blue-600">{cricketStats.batting.fifties}</div>
+                <div className="text-lg font-bold text-orange-600">{cricketStats.batting.fifties}</div>
               </div>
-              <div className="bg-blue-50 rounded-lg p-4">
+              <div className="bg-orange-50 rounded-lg p-4">
                 <div className="text-sm text-gray-600">Highest</div>
-                <div className="text-lg font-bold text-blue-600">{cricketStats.batting.highest}</div>
+                <div className="text-lg font-bold text-orange-600">{cricketStats.batting.highest}</div>
               </div>
             </div>
           </div>
 
           {/* Bowling Section */}
           <div className="mb-6">
-            <h4 className="text-md font-semibold text-blue-600 mb-4">BOWLING</h4>
+            <h4 className="text-md font-semibold text-orange-600 mb-4">BOWLING</h4>
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-blue-50 rounded-lg p-4">
+              <div className="bg-orange-50 rounded-lg p-4">
                 <div className="text-sm text-gray-600">Matches</div>
-                <div className="text-lg font-bold text-blue-600">{cricketStats.bowling.matches}</div>
+                <div className="text-lg font-bold text-orange-600">{cricketStats.bowling.matches}</div>
               </div>
-              <div className="bg-blue-50 rounded-lg p-4">
+              <div className="bg-orange-50 rounded-lg p-4">
                 <div className="text-sm text-gray-600">Wickets</div>
-                <div className="text-lg font-bold text-blue-600">{cricketStats.bowling.wickets}</div>
+                <div className="text-lg font-bold text-orange-600">{cricketStats.bowling.wickets}</div>
               </div>
-              <div className="bg-blue-50 rounded-lg p-4">
+              <div className="bg-orange-50 rounded-lg p-4">
                 <div className="text-sm text-gray-600">Best</div>
-                <div className="text-lg font-bold text-blue-600">{cricketStats.bowling.best}</div>
+                <div className="text-lg font-bold text-orange-600">{cricketStats.bowling.best}</div>
               </div>
-              <div className="bg-blue-50 rounded-lg p-4">
+              <div className="bg-orange-50 rounded-lg p-4">
                 <div className="text-sm text-gray-600">Average</div>
-                <div className="text-lg font-bold text-blue-600">{cricketStats.bowling.average}</div>
+                <div className="text-lg font-bold text-orange-600">{cricketStats.bowling.average}</div>
               </div>
             </div>
           </div>
@@ -376,7 +406,7 @@ export function ProfileView({ onNavigateToPersonalInfo }: ProfileViewProps) {
             <h3 className="text-lg font-semibold text-gray-900">Your Upcoming Matches</h3>
             <button
               onClick={handleAddMatch}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              className="flex items-center space-x-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
             >
               <Plus className="w-4 h-4" />
               <span>Add Match</span>
@@ -403,6 +433,14 @@ export function ProfileView({ onNavigateToPersonalInfo }: ProfileViewProps) {
           © 2024 thelinecricket
         </div>
       </div>
+
+      {/* Photo Upload Modal */}
+      <PhotoUploadModal
+        isOpen={showPhotoUpload}
+        onClose={() => setShowPhotoUpload(false)}
+        onPhotoUpload={handlePhotoUpload}
+        currentPhotoUrl={userProfile?.profile?.profile_image_url}
+      />
     </div>
   );
 }

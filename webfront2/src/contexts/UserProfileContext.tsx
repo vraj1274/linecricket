@@ -170,6 +170,15 @@ export function UserProfileProvider({ children }: UserProfileProviderProps) {
       setError(null);
       console.log('🔄 Refreshing profile from database...');
       
+      // First, try to sync user with Firebase to ensure they exist in database
+      try {
+        console.log('🔄 Syncing user with Firebase first...');
+        await apiService.syncUserWithFirebase();
+        console.log('✅ User sync completed');
+      } catch (syncError) {
+        console.warn('⚠️ User sync failed, but continuing with profile fetch:', syncError);
+      }
+      
       const response = await apiService.getCurrentUserProfile();
       console.log('📋 API Response received:', response);
       
@@ -177,9 +186,6 @@ export function UserProfileProvider({ children }: UserProfileProviderProps) {
         setUserProfile(response.user);
         setLastUpdated(new Date());
         console.log('✅ Profile refreshed successfully:', response.user);
-        
-        // Don't trigger sync from refreshProfile to avoid infinite loop
-        // The sync should only happen during initial user setup
       } else {
         console.warn('⚠️ No user data in response:', response);
         setError('No user data received from server');
@@ -228,8 +234,10 @@ export function UserProfileProvider({ children }: UserProfileProviderProps) {
         setLoading(true);
         
         try {
-          // Disable auto-sync to prevent infinite loop
-          console.log('📱 Profile shown immediately with Firebase data (auto-sync disabled)');
+          // Sync with backend to ensure user exists in database
+          console.log('🔄 Syncing user with backend...');
+          await refreshProfile();
+          console.log('✅ User sync completed');
         } catch (error) {
           console.error('Error during Firebase user setup:', error);
           // Only set error for critical failures, not sync issues
