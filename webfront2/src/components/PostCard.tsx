@@ -195,13 +195,15 @@ export function PostCard({ post, onNavigateToProfile }: PostCardProps) {
             {post.video_url && <Video className="w-4 h-4 mr-1" />}
             {post.image_url ? (Array.isArray(post.image_url) ? `${post.image_url.length} Images` : 'Image') : 'Video'}
           </div>
-          <ErrorBoundary>
-            <ImageCarousel 
-              images={Array.isArray(post.image_url) ? post.image_url : (post.image_url ? [post.image_url] : [])}
-              alt="Post images"
-              className="w-full"
-            />
-          </ErrorBoundary>
+          {post.image_url && (
+            <ErrorBoundary>
+              <ImageCarousel 
+                images={Array.isArray(post.image_url) ? post.image_url : (post.image_url ? [post.image_url] : [])}
+                alt="Post images"
+                className="w-full"
+              />
+            </ErrorBoundary>
+          )}
         </div>
       )}
 

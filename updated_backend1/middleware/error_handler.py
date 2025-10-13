@@ -150,3 +150,5 @@ def register_error_handlers(app):
         return ErrorHandler.handle_exception(e)
     
     logger.info("✅ Error handlers registered successfully")
+
+

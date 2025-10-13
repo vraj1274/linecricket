@@ -20,6 +20,11 @@ class AcademyDetails(db.Model):
     fees_structure = db.Column(db.Text)  # JSON string
     total_students = db.Column(db.Integer, default=0)
     successful_placements = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
+    created_by = db.Column(db.UUID(as_uuid=True), db.ForeignKey('users.id'))
+    updated_by = db.Column(db.UUID(as_uuid=True), db.ForeignKey('users.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
     def to_dict(self):
         """Convert academy details to dictionary"""
