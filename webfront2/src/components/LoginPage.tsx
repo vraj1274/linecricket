@@ -91,23 +91,26 @@ export function LoginPage({ onLogin, onSwitchToSignup, onForgotPassword }: Login
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center px-6 bg-gray-100">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-6">
+    <div className="min-h-screen flex flex-col justify-center items-center px-4 bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="w-full max-w-md">
+        {/* Header Section */}
+        <div className="text-center mb-8">
           <div 
-            className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center bg-white/20 backdrop-blur-lg border border-white/30 shadow-xl"
+            className="w-20 h-20 mx-auto mb-6 rounded-2xl flex items-center justify-center bg-gradient-to-br from-orange-500 to-slate-600 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
           >
-            <img src={newIcon} alt="TheLineCricket" className="h-10 w-10" />
+            <img src={newIcon} alt="TheLineCricket" className="h-12 w-12" />
           </div>
-          <h1 className="text-2xl text-gray-800 mb-1 font-bold">TheLineCricket</h1>
-          <p className="text-gray-600">Welcome Back</p>
+          <h1 className="text-3xl text-gray-800 mb-2 font-bold">TheLineCricket</h1>
+          
         </div>
 
+        {/* Login Form Card */}
         <div 
-          className="rounded-xl p-6 border bg-white/20 backdrop-blur-md border-white/30 shadow-lg"
+          className="rounded-2xl p-8 bg-white/80 backdrop-blur-lg border border-white/40 shadow-xl hover:shadow-2xl transition-all duration-300"
         >
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Email Input */}
+            <div className="space-y-3">
               <input 
                 type="email" 
                 value={email}
@@ -118,17 +121,20 @@ export function LoginPage({ onLogin, onSwitchToSignup, onForgotPassword }: Login
                   }
                 }}
                 required 
-                className={`w-full px-4 py-2 border rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:border-transparent bg-white/50 backdrop-blur-sm ${
-                  errors.email ? 'border-red-500 focus:ring-red-400' : 'border-gray-300 focus:ring-gray-400'
+                className={`w-full px-4 py-4 border-2 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-4 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-200 hover:bg-white/90 ${
+                  errors.email 
+                    ? 'border-red-400 focus:ring-red-200 hover:border-red-500' 
+                    : 'border-gray-200 focus:ring-orange-200 hover:border-orange-300'
                 }`}
-                placeholder="Email"
+                placeholder="Enter your email"
               />
               {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                <p className="text-sm text-red-500 font-medium">{errors.email}</p>
               )}
             </div>
             
-            <div>
+            {/* Password Input */}
+            <div className="space-y-3">
               <div className="relative">
                 <input 
                   type={showPassword ? 'text' : 'password'}
@@ -140,39 +146,70 @@ export function LoginPage({ onLogin, onSwitchToSignup, onForgotPassword }: Login
                     }
                   }}
                   required 
-                  className={`w-full px-4 py-2 border rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:border-transparent pr-12 bg-white/50 backdrop-blur-sm ${
-                    errors.password ? 'border-red-500 focus:ring-red-400' : 'border-gray-300 focus:ring-gray-400'
+                  className={`w-full px-4 py-4 border-2 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-4 focus:border-transparent pr-12 bg-white/70 backdrop-blur-sm transition-all duration-200 hover:bg-white/90 ${
+                    errors.password 
+                      ? 'border-red-400 focus:ring-red-200 hover:border-red-500' 
+                      : 'border-gray-200 focus:ring-orange-200 hover:border-orange-300'
                   }`}
-                  placeholder="Password"
+                  placeholder="Enter your password"
                 />
                 <button 
                   type="button" 
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-orange-600 transition-colors duration-200 p-1 rounded-lg hover:bg-orange-50"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
               {errors.password && (
-                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                <p className="text-sm text-red-500 font-medium">{errors.password}</p>
               )}
             </div>
 
+            {/* Remember Me & Forgot Password */}
+            <div className="flex items-center justify-between">
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500 focus:ring-2"
+                />
+                <span className="text-sm text-gray-600">Remember me</span>
+              </label>
+              <button 
+                type="button"
+                onClick={onForgotPassword}
+                className="text-sm text-orange-600 hover:text-orange-700 font-medium hover:underline transition-colors duration-200"
+              >
+                Forgot password?
+              </button>
+            </div>
+
+            {/* Submit Button */}
             <button 
               type="submit" 
               disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-orange-500 to-slate-600 text-white rounded-lg hover:from-orange-600 hover:to-slate-700 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-gradient-to-r from-orange-500 to-slate-600 text-white rounded-xl hover:from-orange-600 hover:to-slate-700 transition-all duration-300 font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 active:translate-y-0"
             >
-              {loading ? 'Signing In...' : 'Sign In'}
+              {loading ? (
+                <span className="flex items-center justify-center">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  Signing In...
+                </span>
+              ) : (
+                'Sign In'
+              )}
             </button>
           </form>
 
-          <div className="mt-4 text-center">
-            <p className="text-gray-600 text-sm">
+          {/* Switch to Signup */}
+          <div className="mt-6 text-center">
+            <p className="text-gray-600">
               Don't have an account? 
               <button 
                 onClick={onSwitchToSignup}
-                className="text-orange-600 ml-1 hover:underline font-medium"
+                className="text-orange-600 ml-2 hover:text-orange-700 font-semibold hover:underline transition-colors duration-200"
               >
                 Sign up
               </button>

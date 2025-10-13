@@ -3,6 +3,9 @@ from models import db, ProfilePage, User
 from datetime import datetime
 import json
 import uuid
+import logging
+from utils.firebase_auth import get_user_id_from_token
+from utils.api_response import APIResponse, ValidationHelper
 
 profiles_bp = Blueprint('profiles', __name__)
 
@@ -18,8 +21,8 @@ def create_profile():
         page_type_str = data.get('page_type', 'Academy')
         if page_type_str.upper() == 'ACADEMY':
             page_type = 'Academy'
-        elif page_type_str.upper() == 'PITCH':
-            page_type = 'Pitch'
+        elif page_type_str.upper() == 'VENUE PROVIDER' or page_type_str.upper() == 'VENUE':
+            page_type = 'Venue'
         elif page_type_str.upper() == 'COMMUNITY':
             page_type = 'Community'
         else:
@@ -29,12 +32,12 @@ def create_profile():
         if page_type == 'Academy':
             required_fields = ['academy_name', 'academy_type', 'level']
             name_field = 'academy_name'
-        elif page_type == 'Pitch':
-            required_fields = ['academy_name', 'venue_type', 'ground_type']
-            name_field = 'academy_name'
+        elif page_type == 'Venue':
+            required_fields = ['venue_name', 'venue_type', 'ground_type']
+            name_field = 'venue_name'
         elif page_type == 'Community':
-            required_fields = ['academy_name', 'community_type']
-            name_field = 'academy_name'
+            required_fields = ['community_name', 'community_type']
+            name_field = 'community_name'
         else:
             return jsonify({'error': 'Invalid page type'}), 400
         
@@ -44,9 +47,9 @@ def create_profile():
                 return jsonify({'error': f'Missing required field: {field}'}), 400
         
         # Prevent creation of obvious test pages only
-        academy_name = data.get('academy_name', '').lower()
+        page_name = data.get(name_field, '').lower()
         test_patterns = ['test_academy', 'sample_venue', 'demo_community', 'test_page', 'sample_page']
-        if any(pattern in academy_name for pattern in test_patterns):
+        if any(pattern in page_name for pattern in test_patterns):
             return jsonify({'error': 'Cannot create pages with test names'}), 400
         
         # Get user ID (for now using a default UUID, should be from authentication)
@@ -71,7 +74,7 @@ def create_profile():
         profile_page = ProfilePage(
                 user_id=current_user_id,
                 firebase_uid=data.get('firebase_uid'),
-                academy_name=data['academy_name'],
+                academy_name=data.get(name_field, ''),
                 tagline=data.get('tagline'),
                 description=data.get('description'),
                 bio=data.get('bio'),
@@ -90,8 +93,8 @@ def create_profile():
             academy_type=data.get('academy_type', 'Private' if page_type == 'Academy' else None),
             level=data.get('level', 'Beginner' if page_type == 'Academy' else None),
             # Venue-specific fields
-            venue_type=data.get('venue_type') if page_type == 'Pitch' else None,
-            ground_type=data.get('ground_type') if page_type == 'Pitch' else None,
+            venue_type=data.get('venue_type') if page_type == 'Venue' else None,
+            ground_type=data.get('ground_type') if page_type == 'Venue' else None,
             # Community-specific fields
             community_type=data.get('community_type') if page_type == 'Community' else None,
                 established_year=data.get('established_year'),
@@ -422,24 +425,257 @@ def update_profile(profile_id):
 @profiles_bp.route('/profiles/<profile_id>', methods=['DELETE'])
 def delete_profile(profile_id):
     """
-    Delete a specific profile
+    Delete a specific profile with comprehensive error handling and validation
     """
+    import logging
+    from utils.firebase_auth import get_user_id_from_token
+    
+    logger = logging.getLogger(__name__)
+    
     try:
-        profile = ProfilePage.query.filter_by(page_id=profile_id).first()
-        if not profile:
-            return jsonify({'error': 'Profile not found'}), 404
+        # Log the deletion attempt
+        logger.info(f"🗑️ Profile deletion attempt: {profile_id}")
         
+        # Validate profile_id format
+        if not profile_id or len(profile_id.strip()) == 0:
+            logger.warning("❌ Empty profile ID provided")
+            return APIResponse.error(
+                message='Invalid profile ID provided',
+                status_code=400,
+                error_type='ValidationError'
+            )
+        
+        # Handle both regular profile_id and page_ prefixed IDs
+        original_profile_id = profile_id
+        if profile_id.startswith('page_'):
+            profile_id = profile_id[5:]  # Remove 'page_' prefix
+            logger.info(f"🔄 Removed 'page_' prefix: {original_profile_id} -> {profile_id}")
+        
+        # Validate UUID format
+        is_valid_uuid, uuid_error = ValidationHelper.validate_uuid(profile_id, "Profile ID")
+        if not is_valid_uuid:
+            logger.warning(f"❌ Invalid UUID format: {profile_id}")
+            return APIResponse.error(
+                message=uuid_error,
+                status_code=400,
+                error_type='ValidationError'
+            )
+        
+        # Authentication check (optional - can be enabled for production)
+        current_user_id = None
+        try:
+            auth_header = request.headers.get('Authorization')
+            if auth_header and auth_header.startswith('Bearer '):
+                token = auth_header.split(' ')[1]
+                current_user_id = get_user_id_from_token(token)
+                if current_user_id:
+                    logger.info(f"✅ Authenticated user: {current_user_id}")
+                else:
+                    logger.warning("❌ Invalid authentication token")
+        except Exception as auth_error:
+            logger.warning(f"⚠️ Authentication check failed: {auth_error}")
+            # Continue without authentication for now
+        
+        # Find the profile
+        logger.info(f"🔍 Searching for profile: {profile_id}")
+        profile = ProfilePage.query.filter_by(page_id=profile_id).first()
+        
+        if not profile:
+            logger.warning(f"❌ Profile not found: {profile_id}")
+            return APIResponse.not_found("Profile", original_profile_id)
+        
+        # Log profile details before deletion
+        logger.info(f"📋 Profile found: {profile.academy_name} (Type: {profile.page_type})")
+        
+        # Optional: Check if user owns this profile (if authentication is enabled)
+        if current_user_id and profile.user_id != current_user_id:
+            logger.warning(f"❌ User {current_user_id} attempted to delete profile owned by {profile.user_id}")
+            return APIResponse.forbidden("You do not have permission to delete this profile")
+        
+        # Store profile info for logging
+        profile_name = profile.academy_name
+        profile_type = profile.page_type
+        profile_owner = profile.user_id
+        
+        # Delete the profile
+        logger.info(f"🗑️ Deleting profile: {profile_name}")
         db.session.delete(profile)
+        
+        # Commit the transaction
         db.session.commit()
+        logger.info(f"✅ Profile deleted successfully: {profile_name}")
+        
+        # Return success response
+        return APIResponse.success(
+            data={
+                'deleted_profile': {
+                    'id': original_profile_id,
+                    'name': profile_name,
+                    'type': profile_type,
+                    'owner': str(profile_owner)
+                }
+            },
+            message=f'Profile "{profile_name}" deleted successfully'
+        )
+        
+    except Exception as e:
+        # Rollback the transaction
+        db.session.rollback()
+        logger.error(f"❌ Profile deletion failed: {str(e)}")
+        logger.error(f"❌ Error type: {type(e).__name__}")
+        
+        # Return detailed error information
+        return APIResponse.server_error(
+            message='Failed to delete profile',
+            details=str(e)
+        )
+
+@profiles_bp.route('/profiles/<profile_id>/validate', methods=['GET'])
+def validate_profile_for_deletion(profile_id):
+    """
+    Validate if a profile exists and can be deleted
+    """
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Log the validation attempt
+        logger.info(f"🔍 Profile validation attempt: {profile_id}")
+        
+        # Validate profile_id format
+        if not profile_id or len(profile_id.strip()) == 0:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid profile ID provided',
+                'can_delete': False
+            }), 400
+        
+        # Handle both regular profile_id and page_ prefixed IDs
+        original_profile_id = profile_id
+        if profile_id.startswith('page_'):
+            profile_id = profile_id[5:]  # Remove 'page_' prefix
+        
+        # Validate UUID format
+        try:
+            uuid.UUID(profile_id)
+        except ValueError:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid profile ID format',
+                'can_delete': False
+            }), 400
+        
+        # Find the profile
+        profile = ProfilePage.query.filter_by(page_id=profile_id).first()
+        
+        if not profile:
+            return jsonify({
+                'success': True,
+                'exists': False,
+                'can_delete': False,
+                'message': 'Profile not found'
+            }), 200
+        
+        # Check if profile is already soft-deleted
+        if hasattr(profile, 'deleted_at') and profile.deleted_at:
+            return jsonify({
+                'success': True,
+                'exists': True,
+                'can_delete': False,
+                'message': 'Profile is already deleted',
+                'deleted_at': profile.deleted_at.isoformat()
+            }), 200
+        
+        # Return validation success
+        return jsonify({
+            'success': True,
+            'exists': True,
+            'can_delete': True,
+            'profile': {
+                'id': original_profile_id,
+                'name': profile.academy_name,
+                'type': profile.page_type,
+                'owner': str(profile.user_id),
+                'created_at': profile.created_at.isoformat()
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"❌ Profile validation failed: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Validation failed',
+            'details': str(e),
+            'can_delete': False
+        }), 500
+
+@profiles_bp.route('/profiles/<profile_id>/soft-delete', methods=['DELETE'])
+def soft_delete_profile(profile_id):
+    """
+    Soft delete a profile (mark as deleted instead of removing from database)
+    """
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Log the soft deletion attempt
+        logger.info(f"🗑️ Profile soft deletion attempt: {profile_id}")
+        
+        # Validate profile_id format
+        if not profile_id or len(profile_id.strip()) == 0:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid profile ID provided'
+            }), 400
+        
+        # Handle both regular profile_id and page_ prefixed IDs
+        original_profile_id = profile_id
+        if profile_id.startswith('page_'):
+            profile_id = profile_id[5:]  # Remove 'page_' prefix
+        
+        # Validate UUID format
+        try:
+            uuid.UUID(profile_id)
+        except ValueError:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid profile ID format'
+            }), 400
+        
+        # Find the profile
+        profile = ProfilePage.query.filter_by(page_id=profile_id).first()
+        
+        if not profile:
+            return jsonify({
+                'success': False,
+                'error': 'Profile not found'
+            }), 404
+        
+        # Check if already soft-deleted
+        if hasattr(profile, 'deleted_at') and profile.deleted_at:
+            return jsonify({
+                'success': True,
+                'message': 'Profile is already soft-deleted',
+                'deleted_at': profile.deleted_at.isoformat()
+            }), 200
+        
+        # Soft delete the profile
+        profile.deleted_at = datetime.utcnow()
+        profile.is_public = False  # Hide from public view
+        
+        db.session.commit()
+        
+        logger.info(f"✅ Profile soft-deleted successfully: {profile.academy_name}")
         
         return jsonify({
             'success': True,
-            'message': 'Profile deleted successfully'
+            'message': f'Profile "{profile.academy_name}" soft-deleted successfully',
+            'deleted_at': profile.deleted_at.isoformat()
         }), 200
         
     except Exception as e:
         db.session.rollback()
+        logger.error(f"❌ Profile soft deletion failed: {str(e)}")
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': 'Failed to soft-delete profile',
+            'details': str(e)
         }), 500

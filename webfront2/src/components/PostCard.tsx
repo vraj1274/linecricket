@@ -6,6 +6,7 @@ import { apiService } from '../services/api';
 import { PostComments } from './PostComments';
 import { ShareModal } from './ShareModal';
 import { ShareSuccessPopup } from './SuccessPopup';
+import { MediaDisplay } from './MediaDisplay';
 
 interface Post {
   id: string;
@@ -22,6 +23,7 @@ interface Post {
     id: string;
     username: string;
     initials: string;
+    type?: 'player' | 'coach' | 'venue' | 'academy' | 'community';
   };
   is_liked?: boolean;
   is_bookmarked?: boolean;
@@ -30,9 +32,10 @@ interface Post {
 
 interface PostCardProps {
   post: Post;
+  onNavigateToProfile?: (profileId: string, profileType: 'player' | 'coach' | 'venue' | 'academy' | 'community') => void;
 }
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, onNavigateToProfile }: PostCardProps) {
   const [isLiked, setIsLiked] = useState(post.is_liked || false);
   const [likesCount, setLikesCount] = useState(post.likes_count || 0);
   const [isLoading, setIsLoading] = useState(false);
@@ -57,8 +60,13 @@ export function PostCard({ post }: PostCardProps) {
   };
 
   const handleProfileClick = () => {
-    // Navigate to user profile
-    window.location.href = `/profile/${post.author.id}`;
+    if (onNavigateToProfile && post.author.type) {
+      // Use the navigation function from App.tsx
+      onNavigateToProfile(post.author.id, post.author.type);
+    } else {
+      // Fallback to direct URL navigation
+      window.location.href = `/profile/${post.author.id}`;
+    }
   };
 
   const handleLike = async () => {
@@ -180,9 +188,14 @@ export function PostCard({ post }: PostCardProps) {
       </div>
 
       {/* Media Display */}
-      {post.image_url && (
+      {(post.image_url || post.video_url) && (
         <div className="mb-4">
           <div className="flex items-center text-gray-500 text-sm mb-2">
+<<<<<<< HEAD
+            {post.image_url && <Image className="w-4 h-4 mr-1" />}
+            {post.video_url && <Video className="w-4 h-4 mr-1" />}
+            {post.image_url ? 'Image' : 'Video'}
+=======
             <Image className="w-4 h-4 mr-1" />
             {Array.isArray(post.image_url) ? `${post.image_url.length} Images` : 'Image'}
           </div>
@@ -214,7 +227,13 @@ export function PostCard({ post }: PostCardProps) {
             >
               Your browser does not support the video tag.
             </video>
+>>>>>>> 22158ac5d1d06ca18cc5cf739625cf0b44215b68
           </div>
+          <MediaDisplay 
+            imageUrl={post.image_url}
+            videoUrl={post.video_url}
+            maxHeight="max-h-96"
+          />
         </div>
       )}
 

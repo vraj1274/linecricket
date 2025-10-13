@@ -1,5 +1,5 @@
-import { BarChart3, Bell, Check, Home, Loader2, MessageCircle, MoreHorizontal, Plus, Search, User, Users, Building2, MapPin, Globe } from 'lucide-react';
-import { useState } from 'react';
+import { BarChart3, Bell, Check, Home, Loader2, MessageCircle, MoreHorizontal, Plus, Search, User, Users, Building2, MapPin, Globe, Trash2, AlertTriangle, Eye, EyeOff, Lock } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { PageType } from '../App';
 import newIcon from '../assets/newiconfinal.svg';
 import { useMobileApp } from '../contexts/MobileAppContext';
@@ -26,7 +26,32 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
   // Get real user data from contexts
   const { userProfile, loading: profileLoading } = useUserProfile();
   const { user: firebaseUser } = useFirebase();
-  const { currentProfile, availableProfiles, switchProfile, getProfilePage } = useProfileSwitch();
+  const { 
+    currentProfile, 
+    availableProfiles, 
+    switchProfile, 
+    deleteProfile,
+    getProfilePage,
+    scrollToProfile,
+    scrollToTop,
+    scrollToBottom,
+    isScrolling,
+    scrollPosition,
+    canScrollUp,
+    canScrollDown,
+    searchQuery,
+    setSearchQuery,
+    filteredProfiles,
+    clearSearch,
+    filterType,
+    setFilter,
+    sortBy,
+    sortOrder,
+    setSort,
+    clearAllFilters,
+    searchLoading,
+    searchError
+  } = useProfileSwitch();
 
   // Get appropriate icon for profile type
   const getProfileIcon = (type: string) => {
@@ -102,15 +127,9 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
     setShowProfileMenu(false);
   };
 
-  const handleProfileSwitch = (profileId: number) => {
-    setShowProfileSwitch(false);
-    setShowProfileMenu(false);
-    // For now, since we have one logged-in user, we'll show a message
-    // In the future, this could handle multiple accounts or profile views
-    alert(`Profile view updated!`);
-  };
-
   const handleMenuItemClick = (pageId: PageType) => {
+    console.log('🎯 Sidebar menu item clicked:', pageId);
+    
     // Show download app modal for Messages and Notifications
     if (pageId === 'messages') {
       setModalFeature('Messages');
@@ -124,15 +143,23 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
       return;
     }
     
-    // All other pages navigate directly
-    onPageChange(pageId);
+    // Handle profile navigation separately to avoid conflicts
+    if (pageId === 'profile') {
+      console.log('👤 Profile button clicked - navigating to my-profile');
+      // Navigate to user's actual profile, not dynamic profile view
+      onPageChange('my-profile');
+    } else {
+      console.log('📄 Other page clicked - navigating to:', pageId);
+      // All other pages navigate directly
+      onPageChange(pageId);
+    }
   };
 
   return (
     <>
       <div className="fixed top-0 left-0 h-screen w-[280px] bg-gray-50 border-r border-gray-200 z-40 flex flex-col">
         {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">
+        <div className="flex-1 overflow-y-auto sidebar-scrollbar cricket-scrollbar">
           <div className="p-6">
             {/* Logo */}
             <div className="mb-8">
@@ -189,16 +216,23 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
             </div>
           ) : (
             <div className="flex items-center space-x-3">
-              <div 
-                className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold"
+              <button
+                onClick={() => onPageChange('my-profile')}
+                className="flex items-center space-x-3 flex-1 text-left hover:bg-gray-100 rounded-lg p-2 transition-colors duration-200 group"
+                title="View Profile"
+                aria-label="View Profile"
+              >
+                <div 
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold group-hover:scale-105 transition-transform duration-200"
                 style={{ background: currentUser.color }}
               >
                 {currentUser.avatar}
               </div>
               <div className="flex-1">
-                <p className="text-sm text-gray-900">{currentUser.name}</p>
-                <p className="text-xs text-gray-500">{currentUser.username}</p>
+                  <p className="text-sm text-gray-900 group-hover:text-gray-700 transition-colors duration-200">{currentUser.name}</p>
+                  <p className="text-xs text-gray-500 group-hover:text-gray-600 transition-colors duration-200">{currentUser.username}</p>
               </div>
+              </button>
               <div className="flex items-center space-x-1">
                 <button 
                   onClick={() => setShowProfileSwitch(!showProfileSwitch)}
@@ -232,14 +266,15 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
                 <h3 className="text-sm font-semibold text-gray-900">My Pages</h3>
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                {availableProfiles.length} {availableProfiles.length === 1 ? 'item' : 'items'} available
+                {availableProfiles.length} {availableProfiles.length === 1 ? 'page' : 'pages'} available
               </p>
             </div>
             
             <div className="max-h-64 overflow-y-auto">
               {/* Available Profiles from Context */}
-              {availableProfiles.map((profile) => (
-                <button
+              {filteredProfiles.length > 0 ? (
+                filteredProfiles.map((profile) => (
+                <div
                   key={profile.id}
                   onClick={async () => {
                     try {
@@ -289,39 +324,16 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
                     <p className="text-xs text-gray-400 capitalize">
                       {['academy', 'venue', 'community'].includes(profile.type) 
                         ? `${profile.type} Page` 
-                        : `${profile.type} Page`
-                      }
+                        : `${profile.type} Page`}
                     </p>
                   </div>
-                </button>
-              ))}
-              
-              {/* Default User Profile (if no profiles in context) */}
-              {availableProfiles.length === 0 && (
-                <button
-                  onClick={() => {
-                    onPageChange('my-profile');
-                    setShowProfileSwitch(false);
-                  }}
-                  className="w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-orange-50 hover:text-orange-700 transition-all duration-200 ease-in-out bg-orange-100 border-l-4 border-orange-500"
-                >
-                  <div 
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold"
-                    style={{ background: currentUser.color }}
-                  >
-                    {currentUser.avatar}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2">
-                      <p className="text-sm text-gray-900">My Pages</p>
-                      <Check className="w-4 h-4 text-orange-600" />
-                    </div>
-                    <p className="text-xs text-gray-500">{currentUser.username}</p>
-                    <p className="text-xs text-gray-400">Personal Pages</p>
-                  </div>
-                </button>
+                </div>
+              ))
+              ) : (
+                <div className="px-4 py-8 text-center">
+                  <p className="text-sm text-gray-500">No profiles found</p>
+                </div>
               )}
-              
             </div>
           </div>
         </div>

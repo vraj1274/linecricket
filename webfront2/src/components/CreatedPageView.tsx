@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Plus, Briefcase, Settings, Users, Info, FileText, BarChart3, Edit3, Trash2, Eye, Share, Save, X, MapPin, Calendar, Heart, MessageCircle, Phone, Mail, Globe, Building2, Star, Image, Video, Hash } from 'lucide-react';
 import { useUserProfile } from '../contexts/UserProfileContext';
+import { apiService } from '../services/api';
 
 interface CreatedPageViewProps {
   onBack: () => void;
@@ -205,29 +206,36 @@ export function CreatedPageView({ onBack, pageId, pageName, pageType }: CreatedP
     try {
       setIsCreating(true);
       
+      // Debug authentication and page data
+      console.log('🔍 Debugging authentication...');
+      const authToken = localStorage.getItem('authToken');
+      const firebaseToken = localStorage.getItem('firebaseToken');
+      console.log('Auth tokens:', { authToken: !!authToken, firebaseToken: !!firebaseToken });
+      console.log('Page data:', { pageId, pageType, pageName });
+      
       const postData = {
         content: caption.trim(),
         image_url: images.length > 0 ? images : undefined, // Send all images as array
         image_caption: images.length > 0 ? caption.trim() : undefined, // Use caption as image caption
         video_url: video || undefined, // Rename video to video_url for clarity
         location: location || undefined,
+<<<<<<< HEAD
+        post_type: video ? 'video' : (images.length > 0 ? 'image' : 'text'),
+        visibility: visibility,
+        page_id: pageId, // Include the page ID for page-specific posts
+        page_type: pageType // Include the page type for proper categorization
+=======
         post_type: 'general',
         visibility: visibility
+>>>>>>> 22158ac5d1d06ca18cc5cf739625cf0b44215b68
       };
       
       console.log('📤 Sending post data:', postData);
-      const response = await fetch('http://localhost:5000/api/posts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(postData)
-      });
+      console.log('📤 Page context:', { pageId, pageType, pageName });
+      const result = await apiService.createSocialPost(postData);
+      console.log('✅ Post created successfully:', result);
       
-      if (response.ok) {
-        const result = await response.json();
-        console.log('✅ Post created successfully:', result);
-        
+      if (result.post || result.message) {
         // Add the new post to local state
         const newPost = {
           id: result.post.id,
@@ -236,7 +244,7 @@ export function CreatedPageView({ onBack, pageId, pageName, pageType }: CreatedP
           type: 'post',
           status: 'published',
           created_at: new Date().toISOString().split('T')[0],
-          author: pageInfo.name,
+          author: pageInfo.name || pageName || 'Unknown Page',
           likes: 0,
           comments: 0,
           shares: 0
@@ -254,10 +262,11 @@ export function CreatedPageView({ onBack, pageId, pageName, pageType }: CreatedP
         setActiveSection('overview');
         
         console.log('✅ Post added to local state');
+        alert('Post created successfully! 🏏');
       } else {
-        const error = await response.json();
-        console.error('❌ Failed to create post:', error);
-        alert('Failed to create post. Please try again.');
+        console.error('❌ Failed to create post:', result);
+        console.error('❌ Result structure:', JSON.stringify(result, null, 2));
+        alert(`Failed to create post: ${result.error || result.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('❌ Error creating post:', error);

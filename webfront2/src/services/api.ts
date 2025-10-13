@@ -308,6 +308,20 @@ class ApiService {
     return this.handleResponse(response);
   }
 
+  async getPostsByUser(userId: string, page = 1, perPage = 10) {
+    const response = await this.makeRequest(`${API_BASE_URL}/api/posts?user_id=${userId}&page=${page}&per_page=${perPage}`, {
+      method: 'GET'
+    });
+    return this.handleResponse(response);
+  }
+
+  async getPostsByPage(pageId: string, page = 1, perPage = 10) {
+    const response = await this.makeRequest(`${API_BASE_URL}/api/posts?page_id=${pageId}&page=${page}&per_page=${perPage}`, {
+      method: 'GET'
+    });
+    return this.handleResponse(response);
+  }
+
   async likePost(postId: string) {
     const response = await this.makeRequest(`${API_BASE_URL}/api/posts/${postId}/like`, {
       method: 'POST'
@@ -1130,6 +1144,8 @@ class ApiService {
     location?: string;
     post_type?: string;
     visibility?: string;
+    page_id?: string;
+    page_type?: string;
   }) {
     console.log('🚀 Creating social post:', postData);
     console.log('📡 API URL:', `${API_BASE_URL}/api/posts`);
@@ -1296,6 +1312,8 @@ class ApiService {
     return this.handleResponse(response);
   }
 
+<<<<<<< HEAD
+=======
   // Posts API
   async getPosts(page: number = 1, limit: number = 10): Promise<{
     success: boolean;
@@ -1350,6 +1368,7 @@ class ApiService {
     
     return this.handleResponse(response);
   }
+>>>>>>> 22158ac5d1d06ca18cc5cf739625cf0b44215b68
 
   // Utility methods
 }

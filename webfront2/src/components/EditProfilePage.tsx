@@ -1,19 +1,19 @@
-import { ArrowLeft, Camera, Plus, Trash2 } from 'lucide-react';
-import React, { useEffect, useState, useCallback } from 'react';
+import { ArrowLeft, Save, User, Phone, MapPin, Building, Trophy, Target, Mail, Calendar, Users, Camera } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import { useToast } from '../contexts/ToastContext';
 import { useUserProfile } from '../contexts/UserProfileContext';
+import { useFirebase } from '../contexts/FirebaseContext';
 import { auth } from '../firebase/config';
-import { apiService } from '../services/api';
-import { cricketValidationRules, DataValidator, sanitizeFormData, validationRules } from '../utils/validation';
-import { ButtonLoadingSpinner } from './LoadingSpinner';
+import { ImageUploadModal } from './ImageUploadModal';
 
 interface EditProfilePageProps {
   onBack: () => void;
 }
 
 export function EditProfilePage({ onBack }: EditProfilePageProps) {
-  const { userProfile, updateProfile, updateProfileField, loading, lastUpdated, refreshProfile } = useUserProfile();
-  const { showSuccess, showError, showWarning } = useToast();
+  const { userProfile, updateProfile, refreshProfile } = useUserProfile();
+  const { user: firebaseUser } = useFirebase();
+  const { showSuccess, showError } = useToast();
   
   const [formData, setFormData] = useState({
     fullName: '',
@@ -25,8 +25,10 @@ export function EditProfilePage({ onBack }: EditProfilePageProps) {
     gender: 'Male',
     contact: '',
     email: '',
-    isVerified: false,
-    profileImage: null as File | null,
+    batting_skill: 0,
+    bowling_skill: 0,
+    fielding_skill: 0,
+    profile_image_url: '',
   });
 
   // Cricket Statistics
@@ -217,85 +219,109 @@ export function EditProfilePage({ onBack }: EditProfilePageProps) {
   }, [userProfile]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<{message: string, type: string, timestamp: string} | null>(null);
-  const [submitSuccess, setSubmitSuccess] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  const [isValidating, setIsValidating] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [showImageUpload, setShowImageUpload] = useState(false);
 
-  // Real-time field updates using the new updateProfileField function
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  // Load profile data when component mounts
+  useEffect(() => {
+    const loadProfileData = async () => {
+      setLoading(true);
+      
+      try {
+        // Get Firebase token
+        const firebaseToken = localStorage.getItem('firebaseToken');
+        if (!firebaseToken) {
+          throw new Error('No Firebase token found');
+        }
+        
+        // Fetch profile data from the API
+        const response = await fetch('http://localhost:5000/api/users/profile', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${firebaseToken}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const userData = data.user || data;
+          const profileData = userData.profile || {};
+          
+          setFormData({
+            fullName: profileData.full_name || firebaseUser?.displayName || '',
+            username: userData.username || firebaseUser?.email?.split('@')[0] || '',
+            bio: profileData.bio || '',
+            location: profileData.location || '',
+            organization: profileData.organization || '',
+            age: profileData.age?.toString() || '',
+            gender: profileData.gender || 'Male',
+            contact: profileData.contact_number || '',
+            email: firebaseUser?.email || userData.email || '',
+            batting_skill: profileData.batting_skill || 0,
+            bowling_skill: profileData.bowling_skill || 0,
+            fielding_skill: profileData.fielding_skill || 0,
+            profile_image_url: profileData.profile_image_url || '',
+          });
+        } else {
+          // Fallback to userProfile from context
+          if (userProfile) {
+            setFormData({
+              fullName: userProfile.profile?.full_name || firebaseUser?.displayName || '',
+              username: userProfile.username || firebaseUser?.email?.split('@')[0] || '',
+              bio: userProfile.profile?.bio || '',
+              location: userProfile.profile?.location || '',
+              organization: userProfile.profile?.organization || '',
+              age: userProfile.profile?.age?.toString() || '',
+              gender: userProfile.profile?.gender || 'Male',
+              contact: userProfile.profile?.contact_number || '',
+              email: firebaseUser?.email || userProfile.email || '',
+              batting_skill: userProfile.profile?.batting_skill || 0,
+              bowling_skill: userProfile.profile?.bowling_skill || 0,
+              fielding_skill: userProfile.profile?.fielding_skill || 0,
+              profile_image_url: userProfile.profile?.profile_image_url || '',
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error loading profile data:', error);
+        // Fallback to basic data
+        setFormData({
+          fullName: firebaseUser?.displayName || '',
+          username: firebaseUser?.email?.split('@')[0] || '',
+          bio: '',
+          location: '',
+          organization: '',
+          age: '',
+          gender: 'Male',
+          contact: '',
+          email: firebaseUser?.email || '',
+          batting_skill: 0,
+          bowling_skill: 0,
+          fielding_skill: 0,
+          profile_image_url: '',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProfileData();
+  }, [userProfile, firebaseUser]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
-
-    // Real-time update for basic fields (optional - can be enabled for instant updates)
-    // if (['fullName', 'bio', 'location'].includes(name)) {
-    //   const fieldMap: Record<string, string> = {
-    //     fullName: 'full_name',
-    //     bio: 'bio',
-    //     location: 'location'
-    //   };
-    //   updateProfileField(fieldMap[name] || name, value);
-    // }
-
-    if (validationErrors[name]) {
-      setValidationErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[name];
-        return newErrors;
-      });
-    }
-  }, [validationErrors]);
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFormData(prev => ({
-        ...prev,
-        profileImage: e.target.files![0]
-      }));
-    }
   };
 
-  const validateForm = (): Record<string, string> => {
-    const errors: Record<string, string> = {};
-    
-    // Basic validation
-    if (!formData.fullName.trim()) {
-      errors.fullName = 'Full name is required';
-    }
-    
-    if (!formData.username.trim()) {
-      errors.username = 'Username is required';
-    }
-    
-    if (formData.email && !validationRules.email.pattern.test(formData.email)) {
-      errors.email = 'Please enter a valid email address';
-    }
-    
-    if (formData.age && parseInt(formData.age) < 0) {
-      errors.age = 'Age cannot be negative';
-    }
-    
-    if (formData.contact && !validationRules.phone.pattern.test(formData.contact)) {
-      errors.contact = 'Please enter a valid phone number';
-    }
-
-    // Cricket stats validation
-    if (cricketStats.batting.totalRuns < 0) {
-      errors.totalRuns = 'Total runs cannot be negative';
-    }
-    
-    if (cricketStats.batting.matches < 0) {
-      errors.matches = 'Matches cannot be negative';
-    }
-    
-    if (cricketStats.batting.centuries > cricketStats.batting.halfCenturies + cricketStats.batting.centuries) {
-      errors.centuries = 'Centuries cannot exceed total scores';
-    }
-
-    return errors;
+  const handleSkillChange = (skill: string, value: number) => {
+    setFormData(prev => ({
+      ...prev,
+      [skill]: Math.max(0, Math.min(100, value))
+    }));
   };
 
   // Test function to debug the save process
@@ -355,54 +381,14 @@ export function EditProfilePage({ onBack }: EditProfilePageProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    setSubmitError(null);
-    setSubmitSuccess(false);
-    setValidationErrors({});
-    setIsValidating(true);
+    if (!formData.fullName.trim() || !formData.username.trim()) {
+      showError('Validation Error', 'Please fill in all required fields');
+      return;
+    }
+    
+    setIsSubmitting(true);
     
     try {
-      const errors = validateForm();
-      if (Object.keys(errors).length > 0) {
-        setValidationErrors(errors);
-        setIsValidating(false);
-        return;
-      }
-      
-      setIsValidating(false);
-      setIsSubmitting(true);
-
-      console.log('💾 Submitting enhanced profile update...');
-      console.log('📋 Form data:', formData);
-      console.log('📊 Cricket stats:', cricketStats);
-      console.log('🎯 Skills:', skillsRating);
-      
-      // Enhanced authentication check with detailed logging
-      console.log('🔐 Checking authentication status...');
-      const isAuth = apiService.isAuthenticated();
-      console.log('🔐 Authentication status:', isAuth);
-      
-      if (!isAuth) {
-        console.error('❌ User not authenticated');
-        throw new Error('User not authenticated. Please log in again.');
-      }
-      
-      // Check Firebase user
-      const firebaseUser = auth.currentUser;
-      console.log('🔥 Firebase user:', firebaseUser ? 'Present' : 'Not present');
-      if (!firebaseUser) {
-        throw new Error('Firebase user not found. Please log in again.');
-      }
-      
-      // Log API configuration for debugging
-      console.log('🔗 API Configuration:', {
-        baseUrl: import.meta.env.VITE_API_BASE_URL || 'https://thelinecricket-socialapp-backend.onrender.com/api',
-        isDev: import.meta.env.DEV,
-        isProd: import.meta.env.PROD
-      });
-      
-      const sanitizedFormData = sanitizeFormData(formData);
-      
-      // Enhanced profile data with all cricket stats
       const profileData = {
         username: formData.username.trim(),
         full_name: formData.fullName.trim(),
@@ -412,43 +398,14 @@ export function EditProfilePage({ onBack }: EditProfilePageProps) {
         age: parseInt(formData.age) || undefined,
         gender: formData.gender,
         contact_number: formData.contact.trim(),
-        // Skills
-        batting_skill: skillsRating.batting,
-        bowling_skill: skillsRating.bowling,
-        fielding_skill: skillsRating.fielding,
-        // Cricket Statistics
-        total_runs: cricketStats.batting.totalRuns,
-        total_wickets: cricketStats.bowling.wickets,
-        total_matches: cricketStats.batting.matches,
-        batting_average: cricketStats.batting.average,
-        highest_score: cricketStats.batting.highest,
-        centuries: cricketStats.batting.centuries,
-        half_centuries: cricketStats.batting.halfCenturies,
-        bowling_average: cricketStats.bowling.average,
-        best_bowling_figures: cricketStats.bowling.best,
-        catches: cricketStats.fielding.catches,
-        stumpings: cricketStats.fielding.stumpings,
-        run_outs: cricketStats.fielding.runOuts,
-        // Format Performance
-        test_matches: formatPerformance.test.matches,
-        odi_matches: formatPerformance.odi.matches,
-        t20_matches: formatPerformance.t20.matches,
-        test_runs: formatPerformance.test.runs,
-        odi_runs: formatPerformance.odi.runs,
-        t20_runs: formatPerformance.t20.runs,
-        test_wickets: formatPerformance.test.wickets,
-        odi_wickets: formatPerformance.odi.wickets,
-        t20_wickets: formatPerformance.t20.wickets,
+        batting_skill: formData.batting_skill,
+        bowling_skill: formData.bowling_skill,
+        fielding_skill: formData.fielding_skill,
       };
 
-      console.log('🚀 Sending profile data to enhanced context:', profileData);
-      console.log('🔍 Debug: Profile data structure:', {
-        hasUsername: !!profileData.username,
-        hasFullName: !!profileData.full_name,
-        hasBio: !!profileData.bio,
-        hasStats: !!profileData.total_runs,
-        dataKeys: Object.keys(profileData)
-      });
+      await updateProfile(profileData);
+      await refreshProfile();
+      showSuccess('Profile Updated', 'All changes have been saved successfully!');
       
       // Try API call directly first, don't rely on health check
       console.log('🔄 Attempting direct API call to update profile...');
@@ -560,251 +517,164 @@ export function EditProfilePage({ onBack }: EditProfilePageProps) {
         console.error('❌ Invalid response structure:', apiResponse);
         throw new Error(`Failed to update profile - invalid response: ${JSON.stringify(apiResponse)}`);
       }
+      
+      setTimeout(() => {
+        onBack();
+      }, 1500);
     } catch (error) {
-      console.error('❌ Error updating profile:', error);
-      console.error('❌ Error details:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
-        name: error instanceof Error ? error.name : undefined,
-        type: typeof error,
-        constructor: error?.constructor?.name
-      });
-      
-      // Enhanced error detection and logging
-      console.log('🔍 Analyzing error type...');
-      
-      let errorMessage = 'Failed to update profile. Please try again.';
-      let errorType = 'general';
-      
-      if (error instanceof Error) {
-        errorMessage = error.message;
-        console.log('📝 Original error message:', errorMessage);
-        
-        // Check for specific error patterns
-        if (errorMessage.includes('User not authenticated') || errorMessage.includes('Firebase user not found')) {
-          errorType = 'auth';
-          errorMessage = 'Please log in again to continue.';
-          console.log('🔐 Detected authentication error');
-        } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('Connection error')) {
-          errorType = 'network';
-          errorMessage = 'Unable to connect to server. The server might be temporarily unavailable. Please try again in a few moments.';
-          console.log('🌐 Detected server connection error');
-        } else if (errorMessage.includes('unauthorized') || errorMessage.includes('401') || errorMessage.includes('403')) {
-          errorType = 'auth';
-          errorMessage = 'Session expired. Please log in again.';
-          console.log('🔒 Detected authorization error');
-        } else if (errorMessage.includes('username') && errorMessage.includes('taken')) {
-          errorType = 'validation';
-          setValidationErrors({ username: 'This username is already taken' });
-          console.log('📝 Detected username validation error');
-          return;
-        } else if (errorMessage.includes('email') && errorMessage.includes('taken')) {
-          errorType = 'validation';
-          setValidationErrors({ email: 'This email is already registered' });
-          console.log('📧 Detected email validation error');
-          return;
-        } else if (errorMessage.includes('validation') || errorMessage.includes('400')) {
-          errorType = 'validation';
-          console.log('📋 Detected validation error');
-          try {
-            const errorData = JSON.parse(error.message);
-            if (errorData.errors) {
-              setValidationErrors(errorData.errors);
-              return;
-            }
-          } catch {
-            // If parsing fails, use the original message
-            console.log('⚠️ Could not parse validation errors');
-          }
-        } else if (errorMessage.includes('timeout') || errorMessage.includes('TIMEOUT')) {
-          errorType = 'network';
-          errorMessage = 'Request timed out. Please check your connection and try again.';
-          console.log('⏰ Detected timeout error');
-        } else if (errorMessage.includes('CORS') || errorMessage.includes('cors')) {
-          errorType = 'network';
-          errorMessage = 'CORS error. Please check your connection and try again.';
-          console.log('🌐 Detected CORS error');
-        } else {
-          console.log('❓ Unknown error type, treating as general error');
-        }
-      } else {
-        console.log('❓ Non-Error object caught:', typeof error, error);
-      }
-      
-      setSubmitError({
-        message: errorMessage,
-        type: errorType,
-        timestamp: new Date().toISOString()
-      });
-
+      console.error('Error updating profile:', error);
+      showError('Update Failed', 'Failed to update profile. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Helper functions for CRUD operations
-  const addExperience = () => {
-    setExperience([...experience, { title: '', role: '', duration: '', description: '' }]);
+  // Handle profile image upload
+  const handleImageUpload = (imageUrl: string) => {
+    setFormData(prev => ({
+      ...prev,
+      profile_image_url: imageUrl
+    }));
+    setShowImageUpload(false);
   };
 
-  const updateExperience = (index: number, field: string, value: string) => {
-    const newExperience = [...experience];
-    newExperience[index] = { ...newExperience[index], [field]: value };
-    setExperience(newExperience);
-  };
-
-  const removeExperience = (index: number) => {
-    setExperience(experience.filter((_, i) => i !== index));
-  };
-
-  const addAchievement = () => {
-    setAchievements([...achievements, { title: '', description: '', year: '' }]);
-  };
-
-  const updateAchievement = (index: number, field: string, value: string) => {
-    const newAchievements = [...achievements];
-    newAchievements[index] = { ...newAchievements[index], [field]: value };
-    setAchievements(newAchievements);
-  };
-
-  const removeAchievement = (index: number) => {
-    setAchievements(achievements.filter((_, i) => i !== index));
-  };
-
-  const addAward = () => {
-    setAwards([...awards, { title: '', organization: '', year: '' }]);
-  };
-
-  const updateAward = (index: number, field: string, value: string) => {
-    const newAwards = [...awards];
-    newAwards[index] = { ...newAwards[index], [field]: value };
-    setAwards(newAwards);
-  };
-
-  const removeAward = (index: number) => {
-    setAwards(awards.filter((_, i) => i !== index));
-  };
-
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={onBack}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4 text-gray-600" />
-          </button>
-          <div>
-            <h1 className="text-lg font-semibold text-gray-900">Edit Profile</h1>
-            <p className="text-xs text-gray-500">Update your information</p>
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={onBack}
+              className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span>Back</span>
+            </button>
+            <h1 className="text-2xl font-bold text-gray-900">Edit Profile</h1>
+            <div className="w-20"></div>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-xl mx-auto p-4">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6" style={{ backgroundColor: 'var(--field-light)' }}>
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Profile Picture Section */}
-          <div className="bg-white rounded-lg p-4 border border-gray-200">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Profile Picture</h3>
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <div 
-                  className="w-12 h-12 rounded-full flex items-center justify-center text-white text-sm"
-                  style={{ background: 'linear-gradient(to bottom right, #5D798E, #2E4B5F)' }}
-                >
-                  {formData.profileImage ? '📷' : formData.fullName.charAt(0) || 'U'}
+          {/* Profile Picture */}
+          <div className="rounded-xl p-6 border shadow-sm" style={{ backgroundColor: 'var(--stadium-white)', borderColor: 'var(--gray-200)' }}>
+            <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2" style={{ color: 'var(--cricket-green)' }}>
+              <Camera className="w-5 h-5" style={{ color: 'var(--fire-orange)' }} />
+              <span>Profile Picture</span>
+            </h3>
+            <div className="flex items-center space-x-6">
+              <div 
+                className="w-20 h-20 rounded-full flex items-center justify-center text-white text-2xl font-bold cursor-pointer transition-all duration-200 hover:opacity-80 relative group"
+                style={{ backgroundColor: 'var(--cricket-green)' }}
+                onClick={() => setShowImageUpload(true)}
+              >
+                {formData.profile_image_url ? (
+                  <img 
+                    src={formData.profile_image_url} 
+                    alt="Profile" 
+                    className="w-full h-full rounded-full object-cover"
+                  />
+                ) : (
+                  (formData.fullName || 'User').split(' ').map((n: string) => n[0]).join('').toUpperCase()
+                )}
+                {/* Camera overlay on hover */}
+                <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <Camera className="w-6 h-6 text-white" />
                 </div>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-gray-600 mb-2">
+                  Click on the profile picture to change it. You can upload a new image or choose from your existing photos.
+                </p>
                 <button
                   type="button"
-                  className="absolute -bottom-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white hover:bg-blue-600 transition-colors"
-                  aria-label="Change profile picture"
-                  title="Change profile picture"
+                  onClick={() => setShowImageUpload(true)}
+                  className="text-sm font-medium transition-colors"
+                  style={{ color: 'var(--cricket-green)' }}
+                  onMouseEnter={(e) => (e.target as HTMLButtonElement).style.color = 'var(--cricket-green-hover)'}
+                  onMouseLeave={(e) => (e.target as HTMLButtonElement).style.color = 'var(--cricket-green)'}
                 >
-                  <Camera className="w-2 h-2" />
+                  Change Profile Picture
                 </button>
-              </div>
-              <div>
-                <input
-                  type="file"
-                  id="profileImage"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="profileImage"
-                  className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200 transition-colors cursor-pointer"
-                >
-                  Change Photo
-                </label>
-                <p className="text-xs text-gray-500 mt-1">JPG, PNG up to 2MB</p>
               </div>
             </div>
           </div>
 
           {/* Basic Information */}
-          <div className="bg-white rounded-lg p-4 border border-gray-200">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Basic Information</h3>
-            <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-xl p-6 border shadow-sm" style={{ backgroundColor: 'var(--stadium-white)', borderColor: 'var(--gray-200)' }}>
+            <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2" style={{ color: 'var(--cricket-green)' }}>
+              <User className="w-5 h-5" style={{ color: 'var(--cricket-green)' }} />
+              <span>Basic Information</span>
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Full Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
                 <input
                   type="text"
                   name="fullName"
                   value={formData.fullName}
                   onChange={handleInputChange}
-                  className={`w-full px-2 py-1.5 text-sm border rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent ${
-                    validationErrors.fullName 
-                      ? 'border-red-300 bg-red-50' 
-                      : 'border-gray-300'
-                  }`}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent transition-colors"
+                  style={{ '--tw-ring-color': 'var(--cricket-green)' } as React.CSSProperties}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--cricket-green)'}
+                  onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
                   placeholder="Enter your full name"
+                  required
                 />
-                {validationErrors.fullName && (
-                  <p className="mt-1 text-xs text-red-600">{validationErrors.fullName}</p>
-                )}
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Username</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Username *</label>
                 <input
                   type="text"
                   name="username"
                   value={formData.username}
                   onChange={handleInputChange}
-                  className={`w-full px-2 py-1.5 text-sm border rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent ${
-                    validationErrors.username 
-                      ? 'border-red-300 bg-red-50' 
-                      : 'border-gray-300'
-                  }`}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent transition-colors"
+                  style={{ '--tw-ring-color': 'var(--cricket-green)' } as React.CSSProperties}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--cricket-green)'}
+                  onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
                   placeholder="Enter your username"
+                  required
                 />
-                {validationErrors.username && (
-                  <p className="mt-1 text-xs text-red-600">{validationErrors.username}</p>
-                )}
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Age</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Age</label>
                 <input
                   type="number"
                   name="age"
                   value={formData.age}
                   onChange={handleInputChange}
-                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent transition-colors"
+                  style={{ '--tw-ring-color': 'var(--cricket-green)' } as React.CSSProperties}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--cricket-green)'}
+                  onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                  placeholder="Enter your age"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Gender</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
                 <select
                   name="gender"
                   value={formData.gender}
                   onChange={handleInputChange}
-                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                  aria-label="Select gender"
-                  title="Select gender"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent transition-colors"
+                  style={{ '--tw-ring-color': 'var(--cricket-green)' } as React.CSSProperties}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--cricket-green)'}
+                  onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
                 >
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
@@ -815,640 +685,207 @@ export function EditProfilePage({ onBack }: EditProfilePageProps) {
           </div>
 
           {/* Contact Information */}
-          <div className="bg-white rounded-lg p-4 border border-gray-200">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Contact Information</h3>
-            <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-xl p-6 border shadow-sm" style={{ backgroundColor: 'var(--stadium-white)', borderColor: 'var(--gray-200)' }}>
+            <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2" style={{ color: 'var(--cricket-green)' }}>
+              <Phone className="w-5 h-5" style={{ color: 'var(--fire-orange)' }} />
+              <span>Contact Information</span>
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent transition-colors"
+                  style={{ '--tw-ring-color': 'var(--cricket-green)' } as React.CSSProperties}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--cricket-green)'}
+                  onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                  placeholder="Enter your email"
+                  disabled
                 />
+                <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Contact Number</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Contact Number</label>
                 <input
                   type="tel"
                   name="contact"
                   value={formData.contact}
                   onChange={handleInputChange}
-                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent transition-colors"
+                  style={{ '--tw-ring-color': 'var(--cricket-green)' } as React.CSSProperties}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--cricket-green)'}
+                  onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                  placeholder="Enter your phone number"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Location</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
                 <input
                   type="text"
                   name="location"
                   value={formData.location}
                   onChange={handleInputChange}
-                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent transition-colors"
+                  style={{ '--tw-ring-color': 'var(--cricket-green)' } as React.CSSProperties}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--cricket-green)'}
+                  onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                  placeholder="Enter your location"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Organization</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Organization</label>
                 <input
                   type="text"
                   name="organization"
                   value={formData.organization}
                   onChange={handleInputChange}
-                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent transition-colors"
+                  style={{ '--tw-ring-color': 'var(--cricket-green)' } as React.CSSProperties}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--cricket-green)'}
+                  onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                  placeholder="Enter your organization"
                 />
               </div>
             </div>
           </div>
 
           {/* Bio Section */}
-          <div className="bg-white rounded-lg p-4 border border-gray-200">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">About</h3>
+          <div className="rounded-xl p-6 border shadow-sm" style={{ backgroundColor: 'var(--stadium-white)', borderColor: 'var(--gray-200)' }}>
+            <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2" style={{ color: 'var(--cricket-green)' }}>
+              <MapPin className="w-5 h-5" style={{ color: 'var(--sky-blue)' }} />
+              <span>About</span>
+            </h3>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Bio</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
               <textarea
                 name="bio"
                 value={formData.bio}
                 onChange={handleInputChange}
-                rows={3}
-                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Tell us about yourself..."
+                rows={4}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent transition-colors resize-none"
+                style={{ '--tw-ring-color': 'var(--cricket-green)' } as React.CSSProperties}
+                onFocus={(e) => e.target.style.borderColor = 'var(--cricket-green)'}
+                onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                placeholder="Tell us about yourself and your cricket journey..."
               />
             </div>
           </div>
 
-          {/* Cricket Statistics */}
-          <div className="bg-white rounded-lg p-4 border border-gray-200">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Cricket Statistics</h3>
-            
-            {/* Batting Stats */}
-            <div className="mb-4">
-              <h4 className="text-xs font-medium text-gray-700 mb-2">Batting</h4>
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Runs</label>
-                  <input
-                    type="number"
-                    value={cricketStats.batting.totalRuns}
-                    onChange={(e) => setCricketStats({
-                      ...cricketStats,
-                      batting: { ...cricketStats.batting, totalRuns: parseInt(e.target.value) || 0 }
-                    })}
-                    className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Matches</label>
-                  <input
-                    type="number"
-                    value={cricketStats.batting.matches}
-                    onChange={(e) => setCricketStats({
-                      ...cricketStats,
-                      batting: { ...cricketStats.batting, matches: parseInt(e.target.value) || 0 }
-                    })}
-                    className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Average</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={cricketStats.batting.average}
-                    onChange={(e) => setCricketStats({
-                      ...cricketStats,
-                      batting: { ...cricketStats.batting, average: parseFloat(e.target.value) || 0 }
-                    })}
-                    className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Bowling Stats */}
-            <div className="mb-4">
-              <h4 className="text-xs font-medium text-gray-700 mb-2">Bowling</h4>
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Wickets</label>
-                  <input
-                    type="number"
-                    value={cricketStats.bowling.wickets}
-                    onChange={(e) => setCricketStats({
-                      ...cricketStats,
-                      bowling: { ...cricketStats.bowling, wickets: parseInt(e.target.value) || 0 }
-                    })}
-                    className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Best</label>
-                  <input
-                    type="text"
-                    value={cricketStats.bowling.best}
-                    onChange={(e) => setCricketStats({
-                      ...cricketStats,
-                      bowling: { ...cricketStats.bowling, best: e.target.value }
-                    })}
-                    className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="5/23"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Average</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={cricketStats.bowling.average}
-                    onChange={(e) => setCricketStats({
-                      ...cricketStats,
-                      bowling: { ...cricketStats.bowling, average: parseFloat(e.target.value) || 0 }
-                    })}
-                    className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Fielding Stats */}
-            <div>
-              <h4 className="text-xs font-medium text-gray-700 mb-2">Fielding</h4>
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Catches</label>
-                  <input
-                    type="number"
-                    value={cricketStats.fielding.catches}
-                    onChange={(e) => setCricketStats({
-                      ...cricketStats,
-                      fielding: { ...cricketStats.fielding, catches: parseInt(e.target.value) || 0 }
-                    })}
-                    className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Stumpings</label>
-                  <input
-                    type="number"
-                    value={cricketStats.fielding.stumpings}
-                    onChange={(e) => setCricketStats({
-                      ...cricketStats,
-                      fielding: { ...cricketStats.fielding, stumpings: parseInt(e.target.value) || 0 }
-                    })}
-                    className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Run Outs</label>
-                  <input
-                    type="number"
-                    value={cricketStats.fielding.runOuts}
-                    onChange={(e) => setCricketStats({
-                      ...cricketStats,
-                      fielding: { ...cricketStats.fielding, runOuts: parseInt(e.target.value) || 0 }
-                    })}
-                    className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Format Performance */}
-          <div className="bg-white rounded-xl p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Format Performance</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <h3 className="text-md font-medium text-gray-800 mb-3">Test Cricket</h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Matches</label>
-                    <input
-                      type="number"
-                      value={formatPerformance.test.matches}
-                      onChange={(e) => setFormatPerformance({
-                        ...formatPerformance,
-                        test: { ...formatPerformance.test, matches: parseInt(e.target.value) || 0 }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Runs</label>
-                    <input
-                      type="number"
-                      value={formatPerformance.test.runs}
-                      onChange={(e) => setFormatPerformance({
-                        ...formatPerformance,
-                        test: { ...formatPerformance.test, runs: parseInt(e.target.value) || 0 }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Wickets</label>
-                    <input
-                      type="number"
-                      value={formatPerformance.test.wickets}
-                      onChange={(e) => setFormatPerformance({
-                        ...formatPerformance,
-                        test: { ...formatPerformance.test, wickets: parseInt(e.target.value) || 0 }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div>
-                <h3 className="text-md font-medium text-gray-800 mb-3">ODI Cricket</h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Matches</label>
-                    <input
-                      type="number"
-                      value={formatPerformance.odi.matches}
-                      onChange={(e) => setFormatPerformance({
-                        ...formatPerformance,
-                        odi: { ...formatPerformance.odi, matches: parseInt(e.target.value) || 0 }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Runs</label>
-                    <input
-                      type="number"
-                      value={formatPerformance.odi.runs}
-                      onChange={(e) => setFormatPerformance({
-                        ...formatPerformance,
-                        odi: { ...formatPerformance.odi, runs: parseInt(e.target.value) || 0 }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Wickets</label>
-                    <input
-                      type="number"
-                      value={formatPerformance.odi.wickets}
-                      onChange={(e) => setFormatPerformance({
-                        ...formatPerformance,
-                        odi: { ...formatPerformance.odi, wickets: parseInt(e.target.value) || 0 }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div>
-                <h3 className="text-md font-medium text-gray-800 mb-3">T20 Cricket</h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Matches</label>
-                    <input
-                      type="number"
-                      value={formatPerformance.t20.matches}
-                      onChange={(e) => setFormatPerformance({
-                        ...formatPerformance,
-                        t20: { ...formatPerformance.t20, matches: parseInt(e.target.value) || 0 }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Runs</label>
-                    <input
-                      type="number"
-                      value={formatPerformance.t20.runs}
-                      onChange={(e) => setFormatPerformance({
-                        ...formatPerformance,
-                        t20: { ...formatPerformance.t20, runs: parseInt(e.target.value) || 0 }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Wickets</label>
-                    <input
-                      type="number"
-                      value={formatPerformance.t20.wickets}
-                      onChange={(e) => setFormatPerformance({
-                        ...formatPerformance,
-                        t20: { ...formatPerformance.t20, wickets: parseInt(e.target.value) || 0 }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Skills Rating */}
-          <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-green-200">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                <span className="text-green-600 text-sm">⭐</span>
-              </div>
-              <span>Skills Rating</span>
-            </h2>
-            <div className="space-y-4">
+          {/* Cricket Skills */}
+          <div className="rounded-xl p-6 border shadow-sm" style={{ backgroundColor: 'var(--stadium-white)', borderColor: 'var(--gray-200)' }}>
+            <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2" style={{ color: 'var(--cricket-green)' }}>
+              <Trophy className="w-5 h-5" style={{ color: 'var(--fire-orange)' }} />
+              <span>Cricket Skills</span>
+            </h3>
+            <div className="space-y-6">
+              {/* Batting Skill */}
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <label className="text-sm font-medium text-gray-700">Batting</label>
-                  <span className="text-sm text-gray-600">{skillsRating.batting}%</span>
+                  <label className="text-sm font-medium" style={{ color: 'var(--scoreboard-gray)' }}>Batting</label>
+                  <span className="text-sm font-bold" style={{ color: 'var(--cricket-green)' }}>{formData.batting_skill}%</span>
                 </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={skillsRating.batting}
-                  onChange={(e) => setSkillsRating({...skillsRating, batting: parseInt(e.target.value)})}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                />
-              </div>
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="text-sm font-medium text-gray-700">Bowling</label>
-                  <span className="text-sm text-gray-600">{skillsRating.bowling}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={skillsRating.bowling}
-                  onChange={(e) => setSkillsRating({...skillsRating, bowling: parseInt(e.target.value)})}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                />
-              </div>
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="text-sm font-medium text-gray-700">Fielding</label>
-                  <span className="text-sm text-gray-600">{skillsRating.fielding}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={skillsRating.fielding}
-                  onChange={(e) => setSkillsRating({...skillsRating, fielding: parseInt(e.target.value)})}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Experience */}
-          <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-purple-200">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
-                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <span className="text-purple-600 text-sm">💼</span>
-                </div>
-                <span>Experience</span>
-              </h2>
-              <button
-                type="button"
-                onClick={addExperience}
-                className="px-3 py-1 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-1"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Experience</span>
-              </button>
-            </div>
-            <div className="space-y-4">
-              {experience.map((exp, index) => (
-                <div key={index} className="p-4 bg-gray-50 rounded-lg">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Title/Organization</label>
-                      <input
-                        type="text"
-                        value={exp.title}
-                        onChange={(e) => updateExperience(index, 'title', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Role/Position</label>
-                      <input
-                        type="text"
-                        value={exp.role}
-                        onChange={(e) => updateExperience(index, 'role', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Duration</label>
-                      <input
-                        type="text"
-                        value={exp.duration}
-                        onChange={(e) => updateExperience(index, 'duration', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div className="flex items-end">
-                      <button
-                        type="button"
-                        onClick={() => removeExperience(index)}
-                        className="px-3 py-2 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 transition-colors flex items-center space-x-1"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        <span>Remove</span>
-                      </button>
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                    <textarea
-                      value={exp.description}
-                      onChange={(e) => updateExperience(index, 'description', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      rows={2}
+                <div className="flex items-center space-x-4">
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={formData.batting_skill}
+                    onChange={(e) => handleSkillChange('batting_skill', parseInt(e.target.value))}
+                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                  />
+                  <div className="w-16 text-center">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={formData.batting_skill}
+                      onChange={(e) => handleSkillChange('batting_skill', parseInt(e.target.value))}
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:border-transparent"
+                      style={{ '--tw-ring-color': 'var(--cricket-green)' } as React.CSSProperties}
+                      onFocus={(e) => e.target.style.borderColor = 'var(--cricket-green)'}
+                      onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
                     />
                   </div>
                 </div>
-              ))}
+              </div>
+
+              {/* Bowling Skill */}
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-sm font-medium" style={{ color: 'var(--scoreboard-gray)' }}>Bowling</label>
+                  <span className="text-sm font-bold" style={{ color: 'var(--cricket-green)' }}>{formData.bowling_skill}%</span>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={formData.bowling_skill}
+                    onChange={(e) => handleSkillChange('bowling_skill', parseInt(e.target.value))}
+                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                  />
+                  <div className="w-16 text-center">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={formData.bowling_skill}
+                      onChange={(e) => handleSkillChange('bowling_skill', parseInt(e.target.value))}
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:border-transparent"
+                      style={{ '--tw-ring-color': 'var(--cricket-green)' } as React.CSSProperties}
+                      onFocus={(e) => e.target.style.borderColor = 'var(--cricket-green)'}
+                      onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Fielding Skill */}
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-sm font-medium" style={{ color: 'var(--scoreboard-gray)' }}>Fielding</label>
+                  <span className="text-sm font-bold" style={{ color: 'var(--cricket-green)' }}>{formData.fielding_skill}%</span>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={formData.fielding_skill}
+                    onChange={(e) => handleSkillChange('fielding_skill', parseInt(e.target.value))}
+                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                  />
+                  <div className="w-16 text-center">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={formData.fielding_skill}
+                      onChange={(e) => handleSkillChange('fielding_skill', parseInt(e.target.value))}
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:border-transparent"
+                      style={{ '--tw-ring-color': 'var(--cricket-green)' } as React.CSSProperties}
+                      onFocus={(e) => e.target.style.borderColor = 'var(--cricket-green)'}
+                      onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Achievements */}
-          <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-yellow-200">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
-                <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
-                  <span className="text-yellow-600 text-sm">🏆</span>
-                </div>
-                <span>Achievements</span>
-              </h2>
-              <button
-                type="button"
-                onClick={addAchievement}
-                className="px-3 py-1 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-1"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Achievement</span>
-              </button>
-            </div>
-            <div className="space-y-4">
-              {achievements.map((achievement, index) => (
-                <div key={index} className="p-4 bg-gray-50 rounded-lg">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Achievement Title</label>
-                      <input
-                        type="text"
-                        value={achievement.title}
-                        onChange={(e) => updateAchievement(index, 'title', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Year</label>
-                      <input
-                        type="text"
-                        value={achievement.year}
-                        onChange={(e) => updateAchievement(index, 'year', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                      <input
-                        type="text"
-                        value={achievement.description}
-                        onChange={(e) => updateAchievement(index, 'description', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div className="md:col-span-2 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => removeAchievement(index)}
-                        className="px-3 py-2 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 transition-colors flex items-center space-x-1"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        <span>Remove</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Validation Errors Summary */}
-          {Object.keys(validationErrors).length > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
-                  <span className="text-red-500 text-lg">⚠️</span>
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">Please fix the following errors:</h3>
-                  <ul className="mt-2 text-sm text-red-700 list-disc list-inside">
-                    {Object.entries(validationErrors).map(([field, error]) => (
-                      <li key={field}>{error}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Error/Success Messages */}
-          {submitError && (
-            <div className={`rounded-lg p-4 ${
-              submitError.type === 'network' 
-                ? 'bg-yellow-50 border border-yellow-200' 
-                : submitError.type === 'auth'
-                ? 'bg-red-50 border border-red-200'
-                : 'bg-red-50 border border-red-200'
-            }`}>
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
-                  <span className={`text-lg ${
-                    submitError.type === 'network' 
-                      ? 'text-yellow-500' 
-                      : submitError.type === 'auth'
-                      ? 'text-red-500'
-                      : 'text-red-500'
-                  }`}>
-                    {submitError.type === 'network' ? '🌐' : 
-                     submitError.type === 'auth' ? '🔒' : '⚠️'}
-                  </span>
-                </div>
-                <div className="ml-3">
-                  <h3 className={`text-sm font-medium ${
-                    submitError.type === 'network' 
-                      ? 'text-yellow-800' 
-                      : submitError.type === 'auth'
-                      ? 'text-red-800'
-                      : 'text-red-800'
-                  }`}>
-                    {submitError.type === 'network' ? 'Connection Issue' : 
-                     submitError.type === 'auth' ? 'Authentication Error' : 'Error'}
-                  </h3>
-                  <p className={`mt-1 text-sm ${
-                    submitError.type === 'network' 
-                      ? 'text-yellow-700' 
-                      : submitError.type === 'auth'
-                      ? 'text-red-700'
-                      : 'text-red-700'
-                  }`}>
-                    {submitError.message}
-                  </p>
-                  <div className="mt-2 flex space-x-2">
-                    {submitError.type === 'auth' && (
-                      <button
-                        onClick={() => window.location.reload()}
-                        className="text-sm underline hover:no-underline text-red-600"
-                      >
-                        Refresh page to login again
-                      </button>
-                    )}
-                    <button
-                      onClick={() => {
-                        setSubmitError(null);
-                        setSubmitSuccess(false);
-                      }}
-                      className="text-sm underline hover:no-underline text-gray-600"
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {submitSuccess && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <span className="text-green-500 text-lg">✅</span>
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-green-800">Profile Updated Successfully!</h3>
-                  <p className="text-sm text-green-700">
-                    All your changes have been saved to the database. 🏏 
-                    Your profile will be updated across the app.
-                  </p>
-                  <div className="mt-2 text-xs text-green-600">
-                    Redirecting you back to your profile...
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex justify-end space-x-3">
+          {/* Submit Buttons */}
+          <div className="flex justify-end space-x-4 pt-6">
             <button
               type="button"
               onClick={onBack}
               disabled={isSubmitting}
-              className="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-3 text-sm border rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              style={{ borderColor: 'var(--gray-300)', color: 'var(--scoreboard-gray)' }}
+              onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--gray-50)'}
+              onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'transparent'}
             >
               Cancel
             </button>
@@ -1478,27 +915,76 @@ export function EditProfilePage({ onBack }: EditProfilePageProps) {
             </button>
             <button
               type="submit"
-              disabled={loading || isSubmitting || isValidating || Object.keys(validationErrors).length > 0}
-              className={`px-4 py-2 text-sm rounded transition-all duration-200 font-medium flex items-center space-x-2 ${
-                submitSuccess 
-                  ? 'bg-green-500 hover:bg-green-600 text-white' 
-                  : 'bg-blue-500 hover:bg-blue-600 text-white'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              disabled={isSubmitting}
+              className="px-8 py-3 text-sm rounded-lg transition-all duration-200 font-medium flex items-center space-x-2 shadow-lg text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: 'var(--cricket-green)' }}
+              onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--cricket-green-hover)'}
+              onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--cricket-green)'}
             >
-              {(loading || isSubmitting || isValidating) && (
-                <ButtonLoadingSpinner />
+              {isSubmitting ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <Save className="w-4 h-4" />
               )}
               <span>
-                {isValidating ? 'Validating...' :
-                 isSubmitting ? 'Saving...' : 
-                 loading ? 'Loading...' : 
-                 submitSuccess ? 'Saved!' : 
-                 'Save Changes'}
+                {isSubmitting ? 'Saving...' : 'Save Changes'}
               </span>
             </button>
           </div>
         </form>
       </div>
+
+      <style>{`
+        .slider {
+          -webkit-appearance: none;
+          appearance: none;
+          background: transparent;
+          cursor: pointer;
+        }
+        
+        .slider::-webkit-slider-track {
+          background: #e5e7eb;
+          height: 8px;
+          border-radius: 4px;
+        }
+        
+        .slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: var(--cricket-green);
+          cursor: pointer;
+          border: 2px solid #ffffff;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          margin-top: -6px;
+        }
+        
+        .slider::-moz-range-track {
+          background: #e5e7eb;
+          height: 8px;
+          border-radius: 4px;
+          border: none;
+        }
+        
+        .slider::-moz-range-thumb {
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: var(--cricket-green);
+          cursor: pointer;
+          border: 2px solid #ffffff;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+      `}</style>
+      
+      {/* Image Upload Modal */}
+      <ImageUploadModal
+        isOpen={showImageUpload}
+        onClose={() => setShowImageUpload(false)}
+        onSave={handleImageUpload}
+      />
     </div>
   );
 }

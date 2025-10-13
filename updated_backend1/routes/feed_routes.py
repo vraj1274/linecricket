@@ -2,7 +2,11 @@ from flask import Blueprint, request, jsonify
 from models import db, Post, PostLike, PostComment, PostBookmark, User
 from datetime import datetime
 import re
+<<<<<<< HEAD
+from utils.firebase_auth import get_user_id_from_token, get_user_info_from_token
+=======
 import uuid
+>>>>>>> 22158ac5d1d06ca18cc5cf739625cf0b44215b68
 
 feed_bp = Blueprint('feed', __name__)
 
@@ -50,8 +54,23 @@ def get_feed():
         # Get current user ID if authenticated
         current_user_id = None
         try:
+<<<<<<< HEAD
+            # Get user ID from Firebase token in Authorization header
+            auth_header = request.headers.get('Authorization')
+            if auth_header and auth_header.startswith('Bearer '):
+                token = auth_header.split(' ')[1]
+                # Extract user ID from Firebase token
+                current_user_id = get_user_id_from_token(token)
+                if current_user_id:
+                    print(f"✅ Authenticated user: {current_user_id}")
+                else:
+                    print("❌ Invalid token")
+        except Exception as e:
+            print(f"❌ Authentication error: {e}")
+=======
             current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
         except:
+>>>>>>> 22158ac5d1d06ca18cc5cf739625cf0b44215b68
             pass  # Not authenticated, show public posts only
         
         if search_query:
@@ -192,7 +211,29 @@ def create_post():
         description: Bad request
     """
     try:
+<<<<<<< HEAD
+        # Get current user ID from Firebase token
+        current_user_id = None
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            try:
+                # Extract user ID from Firebase token
+                current_user_id = get_user_id_from_token(token)
+                if current_user_id:
+                    print(f"✅ Creating post for user: {current_user_id}")
+                else:
+                    print("❌ Invalid token")
+            except Exception as e:
+                print(f"❌ Token processing error: {e}")
+        
+        if not current_user_id:
+            print("❌ No valid authentication found")
+            return jsonify({'error': 'Authentication required. Please log in again.'}), 401
+            
+=======
         current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
+>>>>>>> 22158ac5d1d06ca18cc5cf739625cf0b44215b68
         data = request.get_json()
         
         if not data or 'content' not in data:
@@ -212,16 +253,29 @@ def create_post():
         else:
             image_url = None
             
-        post = Post(
-            user_id=current_user_id,
-            content=data['content'],
-            image_url=image_url,
-            video_url=data.get('video_url'),
-            location=data.get('location'),
-            post_type=post_type,
-            visibility=data.get('visibility', 'public'),
-            page_id=data.get('page_id')  # Add page_id support
-        )
+        # Create post with page-specific fields
+        post_data = {
+            'user_id': current_user_id,
+            'content': data['content'],
+            'image_url': image_url,
+            'video_url': data.get('video_url'),
+            'location': data.get('location'),
+            'post_type': post_type,
+            'visibility': data.get('visibility', 'public'),
+            'page_id': data.get('page_id')
+        }
+        
+        # Set the appropriate profile_id based on page_type
+        page_type = data.get('page_type')
+        if page_type and data.get('page_id'):
+            if page_type == 'community':
+                post_data['community_profile_id'] = data.get('page_id')
+            elif page_type == 'academy':
+                post_data['academy_profile_id'] = data.get('page_id')
+            elif page_type == 'venue':
+                post_data['venue_profile_id'] = data.get('page_id')
+        
+        post = Post(**post_data)
         
         db.session.add(post)
         db.session.commit()
@@ -263,6 +317,7 @@ def get_posts():
         sort_by = request.args.get('sort_by', 'created_at')
         order = request.args.get('order', 'desc')
         page_id = request.args.get('page_id')  # Add page_id filtering
+        user_id = request.args.get('user_id')  # Add user_id filtering
         
         # Use the same logic as feed posts for consistency
         current_user_id = None
@@ -271,8 +326,37 @@ def get_posts():
         except:
             pass  # Not authenticated, show public posts only
         
+<<<<<<< HEAD
+        # Add page_id filtering if provided
+        if page_id:
+            query = query.filter_by(page_id=page_id)
+        
+        # Add user_id filtering if provided
+        if user_id:
+            query = query.filter_by(user_id=user_id)
+        
+        # Apply sorting
+        if sort_by == 'created_at':
+            if order == 'desc':
+                query = query.order_by(Post.created_at.desc())
+            else:
+                query = query.order_by(Post.created_at.asc())
+        elif sort_by == 'likes_count':
+            if order == 'desc':
+                query = query.order_by(Post.likes_count.desc())
+            else:
+                query = query.order_by(Post.likes_count.asc())
+        
+        # Get paginated results
+        posts = query.paginate(
+            page=page,
+            per_page=per_page,
+            error_out=False
+        )
+=======
         # Get feed posts using the same method as /api/feed
         posts = Post.get_feed_posts(current_user_id, page, per_page, None, None)
+>>>>>>> 22158ac5d1d06ca18cc5cf739625cf0b44215b68
         
         # Convert posts to dict format
         posts_data = []

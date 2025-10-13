@@ -79,11 +79,72 @@ class Post(BaseModel):
         data['shares_count'] = self.shares_count
         data['bookmarks_count'] = self.bookmarks_count
         data['views_count'] = self.views_count
-        data['author'] = {
-            'id': self.user.id,
-            'username': self.user.username,
-            'profile': self.user.profile.to_dict() if self.user.profile else None
-        }
+        
+        # Get user initials for avatar display
+        user_initials = "U"
+        if self.user.username:
+            user_initials = self.user.username[:2].upper()
+        elif self.user.profile and self.user.profile.full_name:
+            name_parts = self.user.profile.full_name.split()
+            if len(name_parts) >= 2:
+                user_initials = (name_parts[0][0] + name_parts[1][0]).upper()
+            else:
+                user_initials = name_parts[0][:2].upper()
+        
+        # Determine user type based on their page profiles
+        user_type = 'player'  # Default type
+        
+        # Check if user has any page profiles
+        if hasattr(self.user, 'page_profiles') and self.user.page_profiles:
+            # Get the first page profile to determine type
+            first_page = self.user.page_profiles[0]
+            if hasattr(first_page, 'page_type'):
+                user_type = first_page.page_type
+        elif hasattr(self.user, 'academy_profiles') and self.user.academy_profiles:
+            user_type = 'academy'
+        elif hasattr(self.user, 'venue_profiles') and self.user.venue_profiles:
+            user_type = 'venue'
+        elif hasattr(self.user, 'community_profiles') and self.user.community_profiles:
+            user_type = 'community'
+        
+        # Determine if this is a page post or user post
+        if self.page_id or self.community_profile_id or self.academy_profile_id or self.venue_profile_id:
+            # This is a page post - get page information
+            page_id = self.page_id or self.community_profile_id or self.academy_profile_id or self.venue_profile_id
+            page_type = 'community' if self.community_profile_id else 'academy' if self.academy_profile_id else 'venue' if self.venue_profile_id else 'page'
+            
+            # Get page profile information
+            from models.profile_page import ProfilePage
+            page_profile = ProfilePage.query.get(page_id)
+            
+            if page_profile:
+                page_name = page_profile.academy_name or 'Unknown Page'
+                page_initials = page_name[:2].upper() if page_name else 'P'
+                data['author'] = {
+                    'id': str(page_id),
+                    'username': page_name,
+                    'initials': page_initials,
+                    'type': page_type,
+                    'profile': page_profile.to_dict() if page_profile else None
+                }
+            else:
+                # Fallback to user if page not found
+                data['author'] = {
+                    'id': str(self.user.id),
+                    'username': self.user.username or 'Unknown User',
+                    'initials': user_initials,
+                    'type': user_type,
+                    'profile': self.user.profile.to_dict() if self.user.profile else None
+                }
+        else:
+            # This is a regular user post
+            data['author'] = {
+                'id': str(self.user.id),
+                'username': self.user.username or 'Unknown User',
+                'initials': user_initials,
+                'type': user_type,
+                'profile': self.user.profile.to_dict() if self.user.profile else None
+            }
         
         # Add engagement_stats object for frontend compatibility
         data['engagement_stats'] = {

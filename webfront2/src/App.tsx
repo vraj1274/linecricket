@@ -294,7 +294,7 @@ function AppContent() {
     
     switch (currentPage) {
       case 'home':
-        return <HomePage isPopupVisible={isAnyPopupVisible} onProfileClick={handleProfileClick} refreshTrigger={postsRefreshTrigger} />;
+        return <HomePage isPopupVisible={isAnyPopupVisible} onProfileClick={handleGenericProfileClick} refreshTrigger={postsRefreshTrigger} />;
       case 'search':
         return <SearchPage />;
       case 'create':

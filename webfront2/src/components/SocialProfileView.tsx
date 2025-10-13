@@ -20,6 +20,7 @@ import {
   Filter
 } from 'lucide-react';
 import { useProfileSwitch } from '../contexts/ProfileSwitchContext';
+import { MediaDisplay } from './MediaDisplay';
 
 interface SocialProfileViewProps {
   onBack: () => void;
@@ -436,10 +437,9 @@ export function SocialProfileView({ onBack, profileId, profileType }: SocialProf
                           <p className="text-gray-900 mb-4">{post.content}</p>
                           {post.image && (
                             <div className="mb-4">
-                              <img 
-                                src={post.image} 
-                                alt="Post" 
-                                className="w-full max-w-md rounded-lg"
+                              <MediaDisplay 
+                                imageUrl={post.image}
+                                maxHeight="max-h-80"
                               />
                             </div>
                           )}

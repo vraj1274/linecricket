@@ -1,4 +1,6 @@
 
+import newIcon from '../assets/newiconfinal.svg';
+
 interface LogoProps {
   size?: 'small' | 'medium' | 'large' | 'xlarge' | 'hero';
   variant?: 'light' | 'dark';
@@ -17,14 +19,8 @@ function Logo({ size = 'medium', variant = 'light', className = '', iconOnly = f
 
   const currentSize = sizes[size];
 
-  // Choose the appropriate logo file
-  const getLogoSrc = () => {
-    if (iconOnly) return '/logo-icon.svg';
-    if (variant === 'dark') return '/logo-dark.svg';
-    return '/logo.svg';
-  };
-
-  const logoSrc = getLogoSrc();
+  // Use the new logo file
+  const logoSrc = newIcon;
 
   return (
     <div className={`logo logo-${size} logo-${variant} ${className}`}>
@@ -34,8 +30,10 @@ function Logo({ size = 'medium', variant = 'light', className = '', iconOnly = f
         className="logo-image"
         onError={(e) => {
           // Fallback to text logo if SVG fails to load
-          e.target.style.display = 'none';
-          e.target.nextSibling.style.display = 'flex';
+          const target = e.target as HTMLImageElement;
+          const nextSibling = target.nextSibling as HTMLElement;
+          target.style.display = 'none';
+          nextSibling.style.display = 'flex';
         }}
       />
       {/* Fallback text logo */}

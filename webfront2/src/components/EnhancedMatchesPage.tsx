@@ -403,7 +403,7 @@ export function EnhancedMatchesPage({ onCreateMatch, refreshTrigger }: MatchesPa
       )}
 
       {/* Debug Info */}
-      {process.env.NODE_ENV === 'development' && (
+      {import.meta.env.DEV && (
         <div className="mt-8 p-4 bg-gray-100 rounded-lg">
           <h4 className="font-semibold mb-2">Debug Info:</h4>
           <p>Active Tab: {activeTab}</p>
