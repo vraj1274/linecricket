@@ -7,7 +7,7 @@ interface CreatedPageViewProps {
   onBack: () => void;
   pageId?: string;
   pageName?: string;
-  pageType?: 'academy' | 'venue' | 'community' | 'club';
+  pageType?: 'academy' | 'venue' | 'community' | 'club' | 'pitch';
 }
 
 export function CreatedPageView({ onBack, pageId, pageName, pageType }: CreatedPageViewProps) {
@@ -66,7 +66,7 @@ export function CreatedPageView({ onBack, pageId, pageName, pageType }: CreatedP
         achievements: pageInfo.achievements,
         testimonials: pageInfo.testimonials
       };
-    } else if (pageType === 'venue') {
+    } else if (pageType === 'venue' || pageType === 'pitch') {
       typeSpecificData = {
         venue_name: pageInfo.venue_name,
         venue_type: pageInfo.venue_type,
@@ -219,15 +219,10 @@ export function CreatedPageView({ onBack, pageId, pageName, pageType }: CreatedP
         image_caption: images.length > 0 ? caption.trim() : undefined, // Use caption as image caption
         video_url: video || undefined, // Rename video to video_url for clarity
         location: location || undefined,
-<<<<<<< HEAD
         post_type: video ? 'video' : (images.length > 0 ? 'image' : 'text'),
         visibility: visibility,
         page_id: pageId, // Include the page ID for page-specific posts
         page_type: pageType // Include the page type for proper categorization
-=======
-        post_type: 'general',
-        visibility: visibility
->>>>>>> 22158ac5d1d06ca18cc5cf739625cf0b44215b68
       };
       
       console.log('📤 Sending post data:', postData);
@@ -2936,19 +2931,23 @@ export function CreatedPageView({ onBack, pageId, pageName, pageType }: CreatedP
             </>
           )}
 
-          {pageType === 'venue' && (
+          {(pageType === 'venue' || pageType === 'pitch') && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-3">Venue Information</h4>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-3">Venue/Pitch Information</h4>
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Venue Name</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Venue/Pitch Name</label>
                       <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{categoryDetails.venue_name || 'Not specified'}</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Venue Type</label>
                       <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{categoryDetails.venue_type || 'Not specified'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Ground Type</label>
+                      <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{categoryDetails.ground_type || 'Not specified'}</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Capacity</label>
@@ -2957,19 +2956,23 @@ export function CreatedPageView({ onBack, pageId, pageName, pageType }: CreatedP
                   </div>
                 </div>
                 <div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-3">Contact & Location</h4>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-3">Facility Details</h4>
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                      <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{categoryDetails.address || 'Not specified'}</p>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Ground Length</label>
+                      <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{categoryDetails.ground_length ? `${categoryDetails.ground_length}m` : 'Not specified'}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                      <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{categoryDetails.phone || 'Not specified'}</p>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Ground Width</label>
+                      <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{categoryDetails.ground_width ? `${categoryDetails.ground_width}m` : 'Not specified'}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                      <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{categoryDetails.email || 'Not specified'}</p>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Floodlights</label>
+                      <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{categoryDetails.floodlights ? 'Available' : 'Not available'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Parking</label>
+                      <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{categoryDetails.parking_available ? 'Available' : 'Not available'}</p>
                     </div>
                   </div>
                 </div>

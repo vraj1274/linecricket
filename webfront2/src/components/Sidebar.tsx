@@ -13,9 +13,10 @@ interface SidebarProps {
   onPageChange: (page: PageType, data?: any) => void;
   onLogout: () => void;
   onProfileTypeSelect?: (type: 'player' | 'coach' | 'venue' | 'academy' | 'community') => void;
+  onAppDownloadModalChange?: (isOpen: boolean) => void;
 }
 
-export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSelect }: SidebarProps) {
+export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSelect, onAppDownloadModalChange }: SidebarProps) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showProfileSwitch, setShowProfileSwitch] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -134,20 +135,22 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
     if (pageId === 'messages') {
       setModalFeature('Messages');
       setShowAppDownloadModal(true);
+      onAppDownloadModalChange?.(true);
       return;
     }
     
     if (pageId === 'notifications') {
       setModalFeature('Notifications');
       setShowAppDownloadModal(true);
+      onAppDownloadModalChange?.(true);
       return;
     }
     
     // Handle profile navigation separately to avoid conflicts
     if (pageId === 'profile') {
-      console.log('👤 Profile button clicked - navigating to my-profile');
-      // Navigate to user's actual profile, not dynamic profile view
-      onPageChange('my-profile');
+      console.log('👤 Profile button clicked - navigating to profile');
+      // Navigate to user's profile view
+      onPageChange('profile');
     } else {
       console.log('📄 Other page clicked - navigating to:', pageId);
       // All other pages navigate directly
@@ -157,7 +160,7 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
 
   return (
     <>
-      <div className="fixed top-0 left-0 h-screen w-[280px] bg-gray-50 border-r border-gray-200 z-40 flex flex-col">
+      <div className="fixed top-0 left-0 h-screen w-[280px] bg-gray-50 border-r border-gray-200 z-40 flex flex-col" data-sidebar>
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto sidebar-scrollbar cricket-scrollbar">
           <div className="p-6">
@@ -428,7 +431,10 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
       {/* App Download Modal */}
       <AppDownloadModal
         isOpen={showAppDownloadModal}
-        onClose={() => setShowAppDownloadModal(false)}
+        onClose={() => {
+          setShowAppDownloadModal(false);
+          onAppDownloadModalChange?.(false);
+        }}
         feature={modalFeature}
       />
     </>

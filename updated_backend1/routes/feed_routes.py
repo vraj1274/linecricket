@@ -2,11 +2,8 @@ from flask import Blueprint, request, jsonify
 from models import db, Post, PostLike, PostComment, PostBookmark, User
 from datetime import datetime
 import re
-<<<<<<< HEAD
 from utils.firebase_auth import get_user_id_from_token, get_user_info_from_token
-=======
 import uuid
->>>>>>> 22158ac5d1d06ca18cc5cf739625cf0b44215b68
 
 feed_bp = Blueprint('feed', __name__)
 
@@ -54,7 +51,6 @@ def get_feed():
         # Get current user ID if authenticated
         current_user_id = None
         try:
-<<<<<<< HEAD
             # Get user ID from Firebase token in Authorization header
             auth_header = request.headers.get('Authorization')
             if auth_header and auth_header.startswith('Bearer '):
@@ -67,10 +63,6 @@ def get_feed():
                     print("❌ Invalid token")
         except Exception as e:
             print(f"❌ Authentication error: {e}")
-=======
-            current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
-        except:
->>>>>>> 22158ac5d1d06ca18cc5cf739625cf0b44215b68
             pass  # Not authenticated, show public posts only
         
         if search_query:
@@ -211,7 +203,6 @@ def create_post():
         description: Bad request
     """
     try:
-<<<<<<< HEAD
         # Get current user ID from Firebase token
         current_user_id = None
         auth_header = request.headers.get('Authorization')
@@ -230,10 +221,6 @@ def create_post():
         if not current_user_id:
             print("❌ No valid authentication found")
             return jsonify({'error': 'Authentication required. Please log in again.'}), 401
-            
-=======
-        current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
->>>>>>> 22158ac5d1d06ca18cc5cf739625cf0b44215b68
         data = request.get_json()
         
         if not data or 'content' not in data:
@@ -326,7 +313,9 @@ def get_posts():
         except:
             pass  # Not authenticated, show public posts only
         
-<<<<<<< HEAD
+        # Start with base query
+        query = Post.query
+        
         # Add page_id filtering if provided
         if page_id:
             query = query.filter_by(page_id=page_id)
@@ -353,10 +342,6 @@ def get_posts():
             per_page=per_page,
             error_out=False
         )
-=======
-        # Get feed posts using the same method as /api/feed
-        posts = Post.get_feed_posts(current_user_id, page, per_page, None, None)
->>>>>>> 22158ac5d1d06ca18cc5cf739625cf0b44215b68
         
         # Convert posts to dict format
         posts_data = []

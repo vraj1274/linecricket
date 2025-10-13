@@ -6,9 +6,10 @@ import { PhotoUploadModal } from './PhotoUploadModal';
 
 interface ProfileViewProps {
   onNavigateToPersonalInfo?: () => void;
+  onNavigateToEditProfile?: () => void;
 }
 
-export function ProfileView({ onNavigateToPersonalInfo }: ProfileViewProps) {
+export function ProfileView({ onNavigateToPersonalInfo, onNavigateToEditProfile }: ProfileViewProps) {
   const [showAllPosts, setShowAllPosts] = useState(false);
   const [postViewMode, setPostViewMode] = useState<'grid' | 'list'>('grid');
   const [showEditProfile, setShowEditProfile] = useState(false);
@@ -46,7 +47,6 @@ export function ProfileView({ onNavigateToPersonalInfo }: ProfileViewProps) {
   const profileStats = {
     posts: 42,
     connections: 156,
-    matches: 23,
     runs: 1247
   };
 
@@ -79,14 +79,11 @@ export function ProfileView({ onNavigateToPersonalInfo }: ProfileViewProps) {
     { format: "T20 Cricket", runs: 0, wickets: 0, matches: 0, average: 0 }
   ];
 
-  const upcomingMatches = [
-    { title: "Sunday Cricket", location: "Shivaji Park", time: "7:00 AM", date: "Tomorrow" },
-    { title: "Practice Match", location: "Oval Maidan", time: "6:00 PM", date: "Today" }
-  ];
 
   const handleEditProfile = () => {
-    setShowEditProfile(true);
-    // You can implement edit profile functionality here
+    if (onNavigateToEditProfile) {
+      onNavigateToEditProfile();
+    }
   };
 
   const handleViewPersonalInfo = () => {
@@ -95,10 +92,6 @@ export function ProfileView({ onNavigateToPersonalInfo }: ProfileViewProps) {
     }
   };
 
-  const handleAddMatch = () => {
-    // Implement add match functionality
-    console.log('Add match clicked');
-  };
 
   const handleViewAllPosts = () => {
     setShowAllPosts(!showAllPosts);
@@ -168,21 +161,17 @@ export function ProfileView({ onNavigateToPersonalInfo }: ProfileViewProps) {
             </div>
           </div>
 
-          {/* Statistics Bar */}
-          <div className="grid grid-cols-4 gap-4 mb-6">
-            <div className="bg-gray-50 rounded-lg p-4 text-center">
+          {/* Statistics Bar - Horizontal Layout */}
+          <div className="flex flex-wrap gap-4 mb-6">
+            <div className="bg-gray-50 rounded-lg p-4 text-center flex-1 min-w-[120px]">
               <div className="text-2xl font-bold text-gray-900">{profileStats.posts}</div>
               <div className="text-sm text-gray-500">Posts</div>
             </div>
-            <div className="bg-gray-50 rounded-lg p-4 text-center">
+            <div className="bg-gray-50 rounded-lg p-4 text-center flex-1 min-w-[120px]">
               <div className="text-2xl font-bold text-gray-900">{profileStats.connections}</div>
               <div className="text-sm text-gray-500">Connections</div>
             </div>
-            <div className="bg-gray-50 rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-gray-900">{profileStats.matches}</div>
-              <div className="text-sm text-gray-500">Matches</div>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-4 text-center">
+            <div className="bg-gray-50 rounded-lg p-4 text-center flex-1 min-w-[120px]">
               <div className="text-2xl font-bold text-gray-900">{profileStats.runs}</div>
               <div className="text-sm text-gray-500">Runs</div>
             </div>
@@ -226,11 +215,11 @@ export function ProfileView({ onNavigateToPersonalInfo }: ProfileViewProps) {
             </div>
             <div>
               <span className="text-sm text-gray-500">Contact:</span>
-              <p className="font-medium text-gray-900">Not provided</p>
+              <p className="font-medium text-gray-900">{userProfile?.profile?.contact_number || 'Not provided'}</p>
             </div>
             <div>
               <span className="text-sm text-gray-500">Location:</span>
-              <p className="font-medium text-gray-900">Not provided</p>
+              <p className="font-medium text-gray-900">{userProfile?.profile?.location || 'Not provided'}</p>
             </div>
             <div>
               <span className="text-sm text-gray-500">Email:</span>
@@ -271,28 +260,28 @@ export function ProfileView({ onNavigateToPersonalInfo }: ProfileViewProps) {
           {/* Batting Section */}
           <div className="mb-6">
             <h4 className="text-md font-semibold text-orange-600 mb-4">BATTING</h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-orange-50 rounded-lg p-4">
+            <div className="flex flex-wrap gap-4">
+              <div className="bg-orange-50 rounded-lg p-4 flex-1 min-w-[150px]">
                 <div className="text-sm text-gray-600">Total Runs</div>
                 <div className="text-lg font-bold text-orange-600">{cricketStats.batting.totalRuns}</div>
               </div>
-              <div className="bg-orange-50 rounded-lg p-4">
+              <div className="bg-orange-50 rounded-lg p-4 flex-1 min-w-[150px]">
                 <div className="text-sm text-gray-600">100s</div>
                 <div className="text-lg font-bold text-orange-600">{cricketStats.batting.hundreds}</div>
               </div>
-              <div className="bg-orange-50 rounded-lg p-4">
+              <div className="bg-orange-50 rounded-lg p-4 flex-1 min-w-[150px]">
                 <div className="text-sm text-gray-600">Average</div>
                 <div className="text-lg font-bold text-orange-600">{cricketStats.batting.average}</div>
               </div>
-              <div className="bg-orange-50 rounded-lg p-4">
+              <div className="bg-orange-50 rounded-lg p-4 flex-1 min-w-[150px]">
                 <div className="text-sm text-gray-600">Matches</div>
                 <div className="text-lg font-bold text-orange-600">{cricketStats.batting.matches}</div>
               </div>
-              <div className="bg-orange-50 rounded-lg p-4">
+              <div className="bg-orange-50 rounded-lg p-4 flex-1 min-w-[150px]">
                 <div className="text-sm text-gray-600">50s</div>
                 <div className="text-lg font-bold text-orange-600">{cricketStats.batting.fifties}</div>
               </div>
-              <div className="bg-orange-50 rounded-lg p-4">
+              <div className="bg-orange-50 rounded-lg p-4 flex-1 min-w-[150px]">
                 <div className="text-sm text-gray-600">Highest</div>
                 <div className="text-lg font-bold text-orange-600">{cricketStats.batting.highest}</div>
               </div>
@@ -302,20 +291,20 @@ export function ProfileView({ onNavigateToPersonalInfo }: ProfileViewProps) {
           {/* Bowling Section */}
           <div className="mb-6">
             <h4 className="text-md font-semibold text-orange-600 mb-4">BOWLING</h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-orange-50 rounded-lg p-4">
+            <div className="flex flex-wrap gap-4">
+              <div className="bg-orange-50 rounded-lg p-4 flex-1 min-w-[150px]">
                 <div className="text-sm text-gray-600">Matches</div>
                 <div className="text-lg font-bold text-orange-600">{cricketStats.bowling.matches}</div>
               </div>
-              <div className="bg-orange-50 rounded-lg p-4">
+              <div className="bg-orange-50 rounded-lg p-4 flex-1 min-w-[150px]">
                 <div className="text-sm text-gray-600">Wickets</div>
                 <div className="text-lg font-bold text-orange-600">{cricketStats.bowling.wickets}</div>
               </div>
-              <div className="bg-orange-50 rounded-lg p-4">
+              <div className="bg-orange-50 rounded-lg p-4 flex-1 min-w-[150px]">
                 <div className="text-sm text-gray-600">Best</div>
                 <div className="text-lg font-bold text-orange-600">{cricketStats.bowling.best}</div>
               </div>
-              <div className="bg-orange-50 rounded-lg p-4">
+              <div className="bg-orange-50 rounded-lg p-4 flex-1 min-w-[150px]">
                 <div className="text-sm text-gray-600">Average</div>
                 <div className="text-lg font-bold text-orange-600">{cricketStats.bowling.average}</div>
               </div>
@@ -325,20 +314,20 @@ export function ProfileView({ onNavigateToPersonalInfo }: ProfileViewProps) {
           {/* Fielding Section */}
           <div className="mb-6">
             <h4 className="text-md font-semibold text-green-600 mb-4">FIELDING</h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-green-50 rounded-lg p-4">
+            <div className="flex flex-wrap gap-4">
+              <div className="bg-green-50 rounded-lg p-4 flex-1 min-w-[150px]">
                 <div className="text-sm text-gray-600">Matches</div>
                 <div className="text-lg font-bold text-green-600">{cricketStats.fielding.matches}</div>
               </div>
-              <div className="bg-green-50 rounded-lg p-4">
+              <div className="bg-green-50 rounded-lg p-4 flex-1 min-w-[150px]">
                 <div className="text-sm text-gray-600">Catches</div>
                 <div className="text-lg font-bold text-green-600">{cricketStats.fielding.catches}</div>
               </div>
-              <div className="bg-green-50 rounded-lg p-4">
+              <div className="bg-green-50 rounded-lg p-4 flex-1 min-w-[150px]">
                 <div className="text-sm text-gray-600">Stumpings</div>
                 <div className="text-lg font-bold text-green-600">{cricketStats.fielding.stumpings}</div>
               </div>
-              <div className="bg-green-50 rounded-lg p-4">
+              <div className="bg-green-50 rounded-lg p-4 flex-1 min-w-[150px]">
                 <div className="text-sm text-gray-600">Run Outs</div>
                 <div className="text-lg font-bold text-green-600">{cricketStats.fielding.runOuts}</div>
               </div>
@@ -348,20 +337,19 @@ export function ProfileView({ onNavigateToPersonalInfo }: ProfileViewProps) {
           {/* Format Performance */}
           <div className="mb-6">
             <h4 className="text-md font-semibold text-gray-700 mb-4">Format Performance</h4>
-            {formatPerformance.map((format, index) => (
-              <div key={index} className="bg-gray-50 rounded-lg p-4 mb-3">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <div className="font-medium text-gray-900">{format.format}</div>
-                    <div className="text-sm text-gray-600">{format.runs} runs • {format.wickets} wickets</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm text-gray-600">{format.matches} matches</div>
+            <div className="flex flex-wrap gap-4">
+              {formatPerformance.map((format, index) => (
+                <div key={index} className="bg-gray-50 rounded-lg p-4 flex-1 min-w-[200px]">
+                  <div className="text-center">
+                    <div className="font-medium text-gray-900 mb-2">{format.format}</div>
+                    <div className="text-sm text-gray-600 mb-1">{format.runs} runs</div>
+                    <div className="text-sm text-gray-600 mb-1">{format.wickets} wickets</div>
+                    <div className="text-sm text-gray-600 mb-1">{format.matches} matches</div>
                     <div className="font-medium text-gray-900">Avg: {format.average}</div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
           {/* Skills Rating */}
@@ -400,33 +388,6 @@ export function ProfileView({ onNavigateToPersonalInfo }: ProfileViewProps) {
           </div>
         </div>
 
-        {/* Upcoming Matches */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Your Upcoming Matches</h3>
-            <button
-              onClick={handleAddMatch}
-              className="flex items-center space-x-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Match</span>
-            </button>
-          </div>
-          
-          <div className="space-y-3">
-            {upcomingMatches.map((match, index) => (
-              <div key={index} className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors cursor-pointer">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <div className="font-medium text-gray-900">{match.title}</div>
-                    <div className="text-sm text-gray-600">{match.location}, {match.time}</div>
-                  </div>
-                  <div className="text-sm text-gray-500">{match.date}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
 
         {/* Footer */}
         <div className="text-center text-gray-500 text-sm py-4">

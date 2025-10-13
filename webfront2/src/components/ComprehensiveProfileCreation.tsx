@@ -103,11 +103,11 @@ const profileFieldDefinitions = {
       { value: 'leg_spin', label: 'Leg Spin' }
     ]},
     { name: 'preferred_position', label: 'Preferred Position', type: 'text', required: false, placeholder: 'e.g., Opening Batsman' },
-    { name: 'batting_skill', label: 'Batting Skill (1-100)', type: 'number', required: false, min: 1, max: 100 },
-    { name: 'bowling_skill', label: 'Bowling Skill (1-100)', type: 'number', required: false, min: 1, max: 100 },
-    { name: 'fielding_skill', label: 'Fielding Skill (1-100)', type: 'number', required: false, min: 1, max: 100 },
-    { name: 'height', label: 'Height (cm)', type: 'number', required: false, min: 100, max: 250 },
-    { name: 'weight', label: 'Weight (kg)', type: 'number', required: false, min: 30, max: 200 },
+    { name: 'batting_skill', label: 'Batting Skill (1-100)', type: 'number', required: false, min: 1, max: 100, step: 1 },
+    { name: 'bowling_skill', label: 'Bowling Skill (1-100)', type: 'number', required: false, min: 1, max: 100, step: 1 },
+    { name: 'fielding_skill', label: 'Fielding Skill (1-100)', type: 'number', required: false, min: 1, max: 100, step: 1 },
+    { name: 'height', label: 'Height (cm)', type: 'number', required: false, min: 100, max: 250, step: 1 },
+    { name: 'weight', label: 'Weight (kg)', type: 'number', required: false, min: 30, max: 200, step: 1 },
     { name: 'dominant_hand', label: 'Dominant Hand', type: 'select', required: false, options: [
       { value: 'right', label: 'Right' },
       { value: 'left', label: 'Left' }
@@ -128,7 +128,7 @@ const profileFieldDefinitions = {
       { value: 'fitness', label: 'Fitness' },
       { value: 'mental_coaching', label: 'Mental Coaching' }
     ]},
-    { name: 'experience_years', label: 'Years of Experience', type: 'number', required: true, min: 0, max: 50 },
+    { name: 'experience_years', label: 'Years of Experience', type: 'number', required: true, min: 0, max: 50, step: 1 },
     { name: 'certification', label: 'Certification', type: 'text', required: false, placeholder: 'Enter your certifications' },
     { name: 'location', label: 'Location', type: 'text', required: false, placeholder: 'Enter your location' },
     { name: 'contact_number', label: 'Contact Number', type: 'tel', required: false, placeholder: 'Enter your contact number' },
@@ -161,19 +161,19 @@ const profileFieldDefinitions = {
       { value: 'Advanced', label: 'Advanced' },
       { value: 'Professional', label: 'Professional' }
     ]},
-    { name: 'established_year', label: 'Established Year', type: 'number', required: false, min: 1900, max: 2025 },
+    { name: 'established_year', label: 'Established Year', type: 'number', required: false, min: 1900, max: 2025, step: 1 },
     { name: 'accreditation', label: 'Accreditation', type: 'text', required: false, placeholder: 'BCCI, State Association, etc.' },
-    { name: 'coaching_staff_count', label: 'Coaching Staff Count', type: 'number', required: false, min: 0 },
-    { name: 'total_students', label: 'Total Students', type: 'number', required: false, min: 0 },
+    { name: 'coaching_staff_count', label: 'Coaching Staff Count', type: 'number', required: false, min: 0, step: 1 },
+    { name: 'total_students', label: 'Total Students', type: 'number', required: false, min: 0, step: 1 },
     { name: 'instagram_handle', label: 'Instagram Handle', type: 'text', required: false, placeholder: '@username' },
     { name: 'facebook_handle', label: 'Facebook Handle', type: 'text', required: false, placeholder: '@username' },
     { name: 'youtube_handle', label: 'YouTube Handle', type: 'text', required: false, placeholder: '@username' }
   ],
   venue: [
-    { name: 'venue_name', label: 'Venue Name', type: 'text', required: true, placeholder: 'Enter venue name' },
+    { name: 'venue_name', label: 'Venue/Pitch Name', type: 'text', required: true, placeholder: 'Enter venue or pitch name' },
     { name: 'email', label: 'Email', type: 'email', required: true, placeholder: 'Enter venue email' },
     { name: 'tagline', label: 'Tagline', type: 'text', required: false, placeholder: 'Enter venue tagline' },
-    { name: 'description', label: 'Description', type: 'textarea', required: false, placeholder: 'Describe your venue' },
+    { name: 'description', label: 'Description', type: 'textarea', required: false, placeholder: 'Describe your venue or pitch' },
     { name: 'contact_person', label: 'Contact Person', type: 'text', required: false, placeholder: 'Enter contact person name' },
     { name: 'contact_number', label: 'Contact Number', type: 'tel', required: false, placeholder: 'Enter contact number' },
     { name: 'website', label: 'Website', type: 'url', required: false, placeholder: 'Enter website URL' },
@@ -187,7 +187,8 @@ const profileFieldDefinitions = {
       { value: 'indoor_pitch', label: 'Indoor Pitch' },
       { value: 'net_practice', label: 'Net Practice' },
       { value: 'multi_sport', label: 'Multi Sport' },
-      { value: 'training_facility', label: 'Training Facility' }
+      { value: 'training_facility', label: 'Training Facility' },
+      { value: 'pitch', label: 'Cricket Pitch' }
     ]},
     { name: 'ground_type', label: 'Ground Type', type: 'select', required: true, options: [
       { value: 'turf', label: 'Turf' },
@@ -249,7 +250,7 @@ export function ComprehensiveProfileCreation({ onBack, onProfileTypeSelect, sele
   const [isCreating, setIsCreating] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [createdProfile, setCreatedProfile] = useState<any>(null);
-  const { showToast } = useToast();
+  const { showToast, showError } = useToast();
   const { addProfile } = useProfileSwitch();
   const { user } = useFirebase();
 
@@ -284,7 +285,7 @@ export function ComprehensiveProfileCreation({ onBack, onProfileTypeSelect, sele
     const missingFields = requiredFields.filter(field => !formData[field.name] || formData[field.name].toString().trim() === '');
     
     if (missingFields.length > 0) {
-      showToast(`Please fill in all required fields: ${missingFields.map(f => f.label).join(', ')}`, 'error');
+      showError('Validation Error', `Please fill in all required fields: ${missingFields.map(f => f.label).join(', ')}`);
       return;
     }
 
@@ -333,6 +334,9 @@ export function ComprehensiveProfileCreation({ onBack, onProfileTypeSelect, sele
       console.log('Form data:', formData);
 
                   // Call the main profile creation API
+                  console.log('🚀 Creating profile with data:', profileData);
+                  console.log('📡 API URL:', `${API_BASE_URL}/api/profiles`);
+                  
                   const response = await fetch(`${API_BASE_URL}/api/profiles`, {
                     method: 'POST',
                     headers: {
@@ -341,8 +345,11 @@ export function ComprehensiveProfileCreation({ onBack, onProfileTypeSelect, sele
                     body: JSON.stringify(profileData),
                   });
 
+                  console.log('📊 Response status:', response.status);
+                  console.log('📊 Response headers:', response.headers);
+                  
                   const result = await response.json();
-                  console.log('Profile creation response:', result);
+                  console.log('✅ Profile creation response:', result);
       
       if (!result.success) {
         throw new Error(result.error || 'Failed to create profile');
@@ -374,7 +381,11 @@ export function ComprehensiveProfileCreation({ onBack, onProfileTypeSelect, sele
                   setCreatedProfile(result.profile);
                   setShowSuccess(true);
                   
-                  showToast(`Successfully created ${filteredProfileTypes.find(p => p.id === selectedType)?.title}!`, 'success');
+                  showToast({
+                    type: 'success',
+                    title: 'Profile Created',
+                    message: `Successfully created ${filteredProfileTypes.find(p => p.id === selectedType)?.title}!`
+                  });
                   
                   // Navigate to the created page after a short delay
                   setTimeout(() => {
@@ -383,16 +394,30 @@ export function ComprehensiveProfileCreation({ onBack, onProfileTypeSelect, sele
                     }
                   }, 2000);
       
-    } catch (error) {
-      console.error('Profile creation error:', error);
-      showToast('Failed to create profile. Please try again.', 'error');
+    } catch (error: any) {
+      console.error('❌ Profile creation error:', error);
+      console.error('❌ Error details:', {
+        message: error?.message,
+        stack: error?.stack,
+        name: error?.name
+      });
+      
+      if (error?.message?.includes('Failed to fetch')) {
+        showError('Network Error', 'Unable to connect to server. Please check if the backend is running.');
+      } else if (error?.message?.includes('400')) {
+        showError('Invalid Data', 'Please check all required fields are filled correctly.');
+      } else if (error?.message?.includes('500')) {
+        showError('Server Error', 'Please try again later or contact support.');
+      } else {
+        showError('Creation Failed', `Failed to create profile: ${error?.message || 'Unknown error'}`);
+      }
     } finally {
       setIsCreating(false);
     }
   };
 
   const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({
+    setFormData((prev: any) => ({
       ...prev,
       [field]: value
     }));
@@ -568,7 +593,7 @@ export function ComprehensiveProfileCreation({ onBack, onProfileTypeSelect, sele
                       placeholder={field.placeholder}
                       min={field.min}
                       max={field.max}
-                      step={field.step}
+                      step={(field as any).step || undefined}
                     />
                   ) : field.type === 'number' ? (
                     <input
@@ -580,7 +605,7 @@ export function ComprehensiveProfileCreation({ onBack, onProfileTypeSelect, sele
                       placeholder={field.placeholder}
                       min={field.min}
                       max={field.max}
-                      step={field.step}
+                      step={(field as any).step || undefined}
                     />
                   ) : field.type === 'textarea' ? (
                     <textarea

@@ -318,6 +318,9 @@ def update_user_profile():
                     )
                     achievement.save()
         
+        # Final commit to save all changes to database
+        db.session.commit()
+        
         # Refresh the user object to get the latest data
         db.session.refresh(user)
         db.session.refresh(profile)

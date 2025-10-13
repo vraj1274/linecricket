@@ -13,6 +13,7 @@ export function HomePage({ isPopupVisible = false, onProfileClick, refreshTrigge
   // const { showMobileAppModal } = useMobileApp();
   const [liveMatch, setLiveMatch] = useState(null);
   const [loading, setLoading] = useState(false);
+  
 
   // Load initial data
   useEffect(() => {
@@ -45,7 +46,12 @@ export function HomePage({ isPopupVisible = false, onProfileClick, refreshTrigge
   };
 
   return (
-    <div className={`space-y-6 transition-all duration-300 ${isPopupVisible ? 'blur-sm pointer-events-none' : ''}`}>
+    <div className={`space-y-6 transition-all duration-300 ${isPopupVisible ? 'blur-md pointer-events-none opacity-50' : ''}`}>
+      {/* Blur overlay indicator */}
+      {isPopupVisible && (
+        <div className="fixed inset-0 bg-blue-500/5 pointer-events-none z-40"></div>
+      )}
+      
       {/* Live Match Update */}
       <div className="bg-gray-50 rounded-2xl shadow-sm border-l-4 border-red-500">
         <div className="p-6">
@@ -95,6 +101,40 @@ export function HomePage({ isPopupVisible = false, onProfileClick, refreshTrigge
 
       {/* Posts Timeline */}
       <PostsFeed onNavigateToProfile={onProfileClick} />
+      
+      {/* Additional content to make blur more visible */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 shadow-sm">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+        <div className="space-y-3">
+          <div className="flex items-center space-x-3 p-3 bg-white rounded-lg shadow-sm">
+            <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+              A
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">New match created</p>
+              <p className="text-xs text-gray-500">2 hours ago</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3 p-3 bg-white rounded-lg shadow-sm">
+            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+              B
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">Player joined your team</p>
+              <p className="text-xs text-gray-500">4 hours ago</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3 p-3 bg-white rounded-lg shadow-sm">
+            <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+              C
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">Venue booking confirmed</p>
+              <p className="text-xs text-gray-500">1 day ago</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

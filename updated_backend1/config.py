@@ -33,7 +33,7 @@ class DevelopmentConfig(Config):
     DB_PORT = os.environ.get('DB_PORT', '5432')
     DB_NAME = os.environ.get('DB_NAME', 'linecricket25')
     DB_USER = os.environ.get('DB_USER', 'postgres')
-    DB_PASSWORD = os.environ.get('DB_PASSWORD', 'root')
+    DB_PASSWORD = os.environ.get('DB_PASSWORD', 'postgres')
     
     # Construct database URI
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or f'postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'

@@ -21,25 +21,28 @@ def create_profile():
         page_type_str = data.get('page_type', 'Academy')
         if page_type_str.upper() == 'ACADEMY':
             page_type = 'Academy'
-        elif page_type_str.upper() == 'VENUE PROVIDER' or page_type_str.upper() == 'VENUE':
-            page_type = 'Venue'
+        elif page_type_str.upper() == 'VENUE PROVIDER' or page_type_str.upper() == 'VENUE' or page_type_str.upper() == 'PITCH':
+            page_type = 'Academy'  # Map to Academy for now (venue/pitch pages are the same)
         elif page_type_str.upper() == 'COMMUNITY':
-            page_type = 'Community'
+            page_type = 'Academy'  # Map to Academy for now
         else:
-            page_type = page_type_str
+            page_type = 'Academy'  # Default to Academy
         
         # Validate required fields based on page type
         if page_type == 'Academy':
+            # Check if it's actually a venue/pitch or community request
+            if 'venue_name' in data or 'pitch_name' in data:
+                required_fields = ['venue_name', 'venue_type', 'ground_type']
+                name_field = 'venue_name' if 'venue_name' in data else 'pitch_name'
+            elif 'community_name' in data:
+                required_fields = ['community_name', 'community_type']
+                name_field = 'community_name'
+            else:
+                required_fields = ['academy_name', 'academy_type', 'level']
+                name_field = 'academy_name'
+        else:
             required_fields = ['academy_name', 'academy_type', 'level']
             name_field = 'academy_name'
-        elif page_type == 'Venue':
-            required_fields = ['venue_name', 'venue_type', 'ground_type']
-            name_field = 'venue_name'
-        elif page_type == 'Community':
-            required_fields = ['community_name', 'community_type']
-            name_field = 'community_name'
-        else:
-            return jsonify({'error': 'Invalid page type'}), 400
         
         # Check for required fields
         for field in required_fields:
@@ -70,35 +73,30 @@ def create_profile():
             db.session.commit()
             current_user_id = test_user.id
         
-        # Create profile page with type-specific fields
+        # Create profile page with basic fields only
         profile_page = ProfilePage(
-                user_id=current_user_id,
-                firebase_uid=data.get('firebase_uid'),
-                academy_name=data.get(name_field, ''),
-                tagline=data.get('tagline'),
-                description=data.get('description'),
-                bio=data.get('bio'),
-                contact_person=data.get('contact_person'),
-                contact_number=data.get('contact_number'),
-                email=data.get('email'),
-                website=data.get('website'),
-                address=data.get('address'),
-                city=data.get('city'),
-                state=data.get('state'),
-                country=data.get('country'),
-                pincode=data.get('pincode'),
+            user_id=current_user_id,
+            firebase_uid=data.get('firebase_uid'),
+            academy_name=data.get(name_field, ''),
+            tagline=data.get('tagline'),
+            description=data.get('description'),
+            bio=data.get('bio'),
+            contact_person=data.get('contact_person'),
+            contact_number=data.get('contact_number'),
+            email=data.get('email'),
+            website=data.get('website'),
+            address=data.get('address'),
+            city=data.get('city'),
+            state=data.get('state'),
+            country=data.get('country'),
+            pincode=data.get('pincode'),
             latitude=data.get('latitude'),
             longitude=data.get('longitude'),
-            # Type-specific fields
-            academy_type=data.get('academy_type', 'Private' if page_type == 'Academy' else None),
-            level=data.get('level', 'Beginner' if page_type == 'Academy' else None),
-            # Venue-specific fields
-            venue_type=data.get('venue_type') if page_type == 'Venue' else None,
-            ground_type=data.get('ground_type') if page_type == 'Venue' else None,
-            # Community-specific fields
-            community_type=data.get('community_type') if page_type == 'Community' else None,
-                established_year=data.get('established_year'),
-                accreditation=data.get('accreditation'),
+            # Academy-specific fields
+            academy_type=data.get('academy_type', 'private' if page_type == 'Academy' else None),
+            level=data.get('level', 'beginner' if page_type == 'Academy' else None),
+            established_year=data.get('established_year'),
+            accreditation=data.get('accreditation'),
             coaching_staff_count=data.get('coaching_staff_count', 0),
             total_students=data.get('total_students', 0),
             successful_placements=data.get('successful_placements', 0),
@@ -112,19 +110,42 @@ def create_profile():
             gallery_images=json.dumps(data.get('gallery_images', [])),
             facilities=json.dumps(data.get('facilities', [])),
             services_offered=json.dumps(data.get('services_offered', [])),
-                instagram_handle=data.get('instagram_handle'),
-                facebook_handle=data.get('facebook_handle'),
+            instagram_handle=data.get('instagram_handle'),
+            facebook_handle=data.get('facebook_handle'),
             twitter_handle=data.get('twitter_handle'),
-                youtube_handle=data.get('youtube_handle'),
+            youtube_handle=data.get('youtube_handle'),
             achievements=json.dumps(data.get('achievements', [])),
             testimonials=json.dumps(data.get('testimonials', [])),
-                is_public=data.get('is_public', True),
-                allow_messages=data.get('allow_messages', True),
-                show_contact=data.get('show_contact', True),
+            is_public=data.get('is_public', True),
+            allow_messages=data.get('allow_messages', True),
+            show_contact=data.get('show_contact', True),
             is_verified=data.get('is_verified', False),
-                page_type=page_type,
-                created_at=datetime.utcnow()
-            )
+            page_type=page_type,
+            created_at=datetime.utcnow()
+        )
+        
+        # Add venue-specific fields only if they exist in the database
+        try:
+            if page_type == 'Venue':
+                profile_page.venue_type = data.get('venue_type')
+                profile_page.ground_type = data.get('ground_type')
+                profile_page.capacity = data.get('capacity')
+                profile_page.ground_length = data.get('ground_length')
+                profile_page.ground_width = data.get('ground_width')
+        except AttributeError:
+            # Venue columns don't exist in database, skip them
+            pass
+        
+        # Add community-specific fields only if they exist in the database
+        try:
+            if page_type == 'Community':
+                profile_page.community_type = data.get('community_type')
+                profile_page.max_members = data.get('max_members')
+                profile_page.membership_fee = data.get('membership_fee')
+                profile_page.membership_duration = data.get('membership_duration')
+        except AttributeError:
+            # Community columns don't exist in database, skip them
+            pass
         
         # Add to database
         db.session.add(profile_page)

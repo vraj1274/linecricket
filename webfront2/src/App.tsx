@@ -28,6 +28,7 @@ import { SocialProfileView } from './components/SocialProfileView';
 import { PageView } from './components/PageView';
 import { OTPVerificationPage } from './components/OTPVerificationPage';
 import { MyProfilePage } from './components/MyProfilePage';
+import { ProfileView } from './components/ProfileView';
 import { PersonalInfoPage } from './components/PersonalInfoPage';
 import { ResetPasswordPage } from './components/ResetPasswordPage';
 import { SearchPage } from './components/SearchPage';
@@ -43,9 +44,9 @@ import { UserProfileProvider } from './contexts/UserProfileContext';
 import { ProfileSwitchProvider } from './contexts/ProfileSwitchContext';
 import { useFirebaseAuth } from './hooks/useFirebaseAuth';
 
-export type PageType = 'new-landing' | 'home' | 'search' | 'create' | 'create-page' | 'page-view' | 'matches' | 'notifications' | 'messages' | 'login' | 'signup' | 'edit-profile' | 'profile' | 'personal-info' | 'forgot-password' | 'otp-verification' | 'reset-password' | 'new-profile' | 'academy-profile' | 'venue-profile' | 'coach-profile' | 'player-profile' | 'community-profile' | 'dynamic-profile' | 'public-profile' | 'generic-profile' | 'social-profile' | 'my-profile' | 'created-page' | 'test-page';
+export type PageType = 'new-landing' | 'home' | 'search' | 'create' | 'create-page' | 'page-view' | 'matches' | 'notifications' | 'messages' | 'login' | 'signup' | 'edit-profile' | 'profile' | 'personal-info' | 'forgot-password' | 'otp-verification' | 'reset-password' | 'new-profile' | 'academy-profile' | 'venue-profile' | 'coach-profile' | 'player-profile' | 'community-profile' | 'dynamic-profile' | 'public-profile' | 'generic-profile' | 'social-profile' | 'my-profile' | 'created-page' | 'test-page' | 'pitch-profile';
 
-export type ProfileType = 'player' | 'coach' | 'venue' | 'academy' | 'community';
+export type ProfileType = 'player' | 'coach' | 'venue' | 'academy' | 'community' | 'pitch';
 
 // Error Boundary Component
 class AppErrorBoundary extends React.Component<
@@ -99,6 +100,7 @@ function AppContent() {
   const [currentPage, setCurrentPage] = useState<PageType>('new-landing');
   const [showCreateMatchModal, setShowCreateMatchModal] = useState(false);
   const [showAppInstallNotification, setShowAppInstallNotification] = useState(false);
+  const [showAppDownloadModal, setShowAppDownloadModal] = useState(false);
   const [matchesRefreshTrigger, setMatchesRefreshTrigger] = useState(0);
   const [postsRefreshTrigger, setPostsRefreshTrigger] = useState(0);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
@@ -290,7 +292,8 @@ function AppContent() {
   }
 
   const renderMainContent = () => {
-    const isAnyPopupVisible = showCreateMatchModal || showAppInstallNotification;
+    const isAnyPopupVisible = showCreateMatchModal || showAppInstallNotification || showAppDownloadModal;
+    
     
     switch (currentPage) {
       case 'home':
@@ -337,9 +340,9 @@ function AppContent() {
       case 'edit-profile':
         return <EditProfilePage onBack={() => setCurrentPage('home')} />;
       case 'profile':
-        return <DynamicProfileView 
-          onBack={() => setCurrentPage('home')}
-          onNavigateToEdit={() => setCurrentPage('edit-profile')}
+        return <ProfileView 
+          onNavigateToPersonalInfo={() => setCurrentPage('personal-info')}
+          onNavigateToEditProfile={() => setCurrentPage('edit-profile')}
         />;
       case 'personal-info':
         return <PersonalInfoPage onBack={() => setCurrentPage('profile')} />;
@@ -440,9 +443,10 @@ function AppContent() {
           }}
           onLogout={handleLogout}
           onProfileTypeSelect={(type) => handleProfileTypeSelect(type as ProfileType)}
+          onAppDownloadModalChange={setShowAppDownloadModal}
         />
         
-        <main className="ml-[270px] min-h-screen p-5 min-w-[600px] bg-white">
+        <main className={`ml-[270px] min-h-screen p-5 min-w-[600px] bg-white transition-all duration-300 ${showAppDownloadModal ? 'blur-sm' : ''}`}>
           <div className="max-w-[600px] mx-auto">
             {renderMainContent()}
           </div>
@@ -459,10 +463,13 @@ function AppContent() {
           />
         )}
 
-        <AppInstallNotification 
-          isVisible={showAppInstallNotification} 
-          onClose={() => setShowAppInstallNotification(false)} 
-        />
+        {/* Show App Install Notification only on home page as overlay */}
+        {currentPage === 'home' && (
+          <AppInstallNotification 
+            isVisible={showAppInstallNotification} 
+            onClose={() => setShowAppInstallNotification(false)} 
+          />
+        )}
 
         {/* Global Floating Action Button for Creating Matches */}
         <button

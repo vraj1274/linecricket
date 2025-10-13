@@ -434,11 +434,6 @@ export function MyProfilePage({ onBack }: MyProfilePageProps) {
     setShowPersonalInfo(true);
   };
 
-  // Handle match card clicks
-  const handleMatchClick = (matchName: string) => {
-    console.log(`Clicked on match: ${matchName}`);
-    // You can add navigation to match details here
-  };
 
   // Handle posts view mode toggle
   const handlePostsViewToggle = (mode: 'grid' | 'list') => {
@@ -662,10 +657,6 @@ export function MyProfilePage({ onBack }: MyProfilePageProps) {
               <div className="text-center min-w-[60px]">
               <div className="text-xl sm:text-2xl font-bold text-gray-900">{user.followers}</div>
               <div className="text-xs sm:text-sm text-gray-600">Connections</div>
-            </div>
-              <div className="text-center min-w-[60px]">
-              <div className="text-xl sm:text-2xl font-bold text-gray-900">0</div>
-              <div className="text-xs sm:text-sm text-gray-600">Matches</div>
             </div>
               <div className="text-center min-w-[60px]">
               <div className="text-xl sm:text-2xl font-bold text-gray-900">0</div>
@@ -930,12 +921,6 @@ export function MyProfilePage({ onBack }: MyProfilePageProps) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="p-3 sm:p-4 rounded-lg" style={{ backgroundColor: 'var(--info-light)' }}>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm sm:text-base" style={{ color: 'var(--scoreboard-gray)' }}>Matches</span>
-                  <span className="font-bold" style={{ color: 'var(--sky-blue)' }}>{profileData?.total_matches || 0}</span>
-                </div>
-              </div>
-              <div className="p-3 sm:p-4 rounded-lg" style={{ backgroundColor: 'var(--info-light)' }}>
-                <div className="flex justify-between items-center">
                   <span className="text-sm sm:text-base" style={{ color: 'var(--scoreboard-gray)' }}>Wickets</span>
                   <span className="font-bold" style={{ color: 'var(--sky-blue)' }}>{profileData?.total_wickets || 0}</span>
                 </div>
@@ -960,12 +945,6 @@ export function MyProfilePage({ onBack }: MyProfilePageProps) {
             <h3 className="text-base sm:text-lg font-bold mb-4" style={{ color: 'var(--grass-green)' }}>FIELDING</h3>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="p-3 sm:p-4 rounded-lg" style={{ backgroundColor: 'var(--success-light)' }}>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm sm:text-base" style={{ color: 'var(--scoreboard-gray)' }}>Matches</span>
-                  <span className="font-bold" style={{ color: 'var(--grass-green)' }}>{profileData?.total_matches || 0}</span>
-                </div>
-              </div>
               <div className="p-3 sm:p-4 rounded-lg" style={{ backgroundColor: 'var(--success-light)' }}>
                 <div className="flex justify-between items-center">
                   <span className="text-sm sm:text-base" style={{ color: 'var(--scoreboard-gray)' }}>Catches</span>
@@ -999,7 +978,6 @@ export function MyProfilePage({ onBack }: MyProfilePageProps) {
                     <p className="text-sm" style={{ color: 'var(--scoreboard-gray)' }}>0 runs • 0 wickets</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm" style={{ color: 'var(--scoreboard-gray)' }}>0 matches</p>
                     <p className="text-sm" style={{ color: 'var(--scoreboard-gray)' }}><span className="font-bold">Avg:</span> 0</p>
                   </div>
                 </div>
@@ -1012,7 +990,6 @@ export function MyProfilePage({ onBack }: MyProfilePageProps) {
                     <p className="text-sm" style={{ color: 'var(--scoreboard-gray)' }}>0 runs • 0 wickets</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm" style={{ color: 'var(--scoreboard-gray)' }}>0 matches</p>
                     <p className="text-sm" style={{ color: 'var(--scoreboard-gray)' }}><span className="font-bold">Avg:</span> 0</p>
                   </div>
                 </div>
@@ -1025,7 +1002,6 @@ export function MyProfilePage({ onBack }: MyProfilePageProps) {
                     <p className="text-sm" style={{ color: 'var(--scoreboard-gray)' }}>0 runs • 0 wickets</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm" style={{ color: 'var(--scoreboard-gray)' }}>0 matches</p>
                     <p className="text-sm" style={{ color: 'var(--scoreboard-gray)' }}><span className="font-bold">Avg:</span> 0</p>
                   </div>
                 </div>
@@ -1194,48 +1170,6 @@ export function MyProfilePage({ onBack }: MyProfilePageProps) {
           )}
         </div>
 
-        {/* Your Upcoming Matches - Third Image */}
-        <div className="mb-6">
-          <h2 className="text-base sm:text-lg font-bold mb-4" style={{ color: 'var(--cricket-green)' }}>Your Upcoming Matches</h2>
-          
-          <div className="space-y-4">
-            <div 
-              onClick={() => handleMatchClick('Sunday Cricket')}
-              className="rounded-lg p-3 sm:p-4 cursor-pointer transition-colors"
-              style={{ backgroundColor: 'var(--pavilion-cream)' }}
-              onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--gray-100)'}
-              onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--pavilion-cream)'}
-            >
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Sunday Cricket</h3>
-                  <p className="text-xs sm:text-sm text-gray-600">Shivaji Park, 7:00 AM</p>
-                </div>
-                <div className="text-left sm:text-right">
-                  <span className="text-xs sm:text-sm text-gray-500">Tomorrow</span>
-                </div>
-              </div>
-            </div>
-            
-            <div 
-              onClick={() => handleMatchClick('Practice Match')}
-              className="rounded-lg p-3 sm:p-4 cursor-pointer transition-colors"
-              style={{ backgroundColor: 'var(--pavilion-cream)' }}
-              onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--gray-100)'}
-              onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--pavilion-cream)'}
-            >
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Practice Match</h3>
-                  <p className="text-xs sm:text-sm text-gray-600">Oval Maidan, 6:00 PM</p>
-                </div>
-                <div className="text-left sm:text-right">
-                  <span className="text-xs sm:text-sm text-gray-500">Today</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
 
        
       </div>
