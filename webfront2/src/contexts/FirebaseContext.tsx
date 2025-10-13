@@ -41,6 +41,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({ children }) 
         setNetworkError(null);
       }
     } catch (error) {
+      console.warn('Network check failed:', error);
       setIsOnline(false);
       setNetworkError('Network connection failed');
     }

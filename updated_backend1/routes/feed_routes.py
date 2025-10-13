@@ -2,7 +2,11 @@ from flask import Blueprint, request, jsonify
 from models import db, Post, PostLike, PostComment, PostBookmark, User
 from datetime import datetime
 import re
+<<<<<<< HEAD
 from utils.firebase_auth import get_user_id_from_token, get_user_info_from_token
+=======
+import uuid
+>>>>>>> 22158ac5d1d06ca18cc5cf739625cf0b44215b68
 
 feed_bp = Blueprint('feed', __name__)
 
@@ -50,6 +54,7 @@ def get_feed():
         # Get current user ID if authenticated
         current_user_id = None
         try:
+<<<<<<< HEAD
             # Get user ID from Firebase token in Authorization header
             auth_header = request.headers.get('Authorization')
             if auth_header and auth_header.startswith('Bearer '):
@@ -62,6 +67,10 @@ def get_feed():
                     print("❌ Invalid token")
         except Exception as e:
             print(f"❌ Authentication error: {e}")
+=======
+            current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
+        except:
+>>>>>>> 22158ac5d1d06ca18cc5cf739625cf0b44215b68
             pass  # Not authenticated, show public posts only
         
         if search_query:
@@ -202,6 +211,7 @@ def create_post():
         description: Bad request
     """
     try:
+<<<<<<< HEAD
         # Get current user ID from Firebase token
         current_user_id = None
         auth_header = request.headers.get('Authorization')
@@ -221,6 +231,9 @@ def create_post():
             print("❌ No valid authentication found")
             return jsonify({'error': 'Authentication required. Please log in again.'}), 401
             
+=======
+        current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
+>>>>>>> 22158ac5d1d06ca18cc5cf739625cf0b44215b68
         data = request.get_json()
         
         if not data or 'content' not in data:
@@ -286,6 +299,7 @@ def create_post():
             print(f"Error calculating engagement score: {e}")
         
         return jsonify({
+            'success': True,
             'message': 'Post created successfully',
             'post': post.to_dict()
         }), 201
@@ -305,9 +319,14 @@ def get_posts():
         page_id = request.args.get('page_id')  # Add page_id filtering
         user_id = request.args.get('user_id')  # Add user_id filtering
         
-        # Build query
-        query = Post.query
+        # Use the same logic as feed posts for consistency
+        current_user_id = None
+        try:
+            current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
+        except:
+            pass  # Not authenticated, show public posts only
         
+<<<<<<< HEAD
         # Add page_id filtering if provided
         if page_id:
             query = query.filter_by(page_id=page_id)
@@ -334,6 +353,10 @@ def get_posts():
             per_page=per_page,
             error_out=False
         )
+=======
+        # Get feed posts using the same method as /api/feed
+        posts = Post.get_feed_posts(current_user_id, page, per_page, None, None)
+>>>>>>> 22158ac5d1d06ca18cc5cf739625cf0b44215b68
         
         # Convert posts to dict format
         posts_data = []
@@ -378,7 +401,7 @@ def toggle_like_post(post_id):
         description: Post not found
     """
     try:
-        current_user_id = "17c9109e-cb20-4723-be49-c26b8343cd19"  # Using the Firebase user ID from database
+        current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
         
         # Check if post exists
         post = Post.query.get(post_id)
@@ -438,7 +461,7 @@ def create_comment(post_id):
         description: Post not found
     """
     try:
-        current_user_id = "17c9109e-cb20-4723-be49-c26b8343cd19"  # Using the Firebase user ID from database
+        current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
         data = request.get_json()
         
         if not data or 'content' not in data:
@@ -574,7 +597,7 @@ def edit_comment(comment_id):
         description: Comment not found
     """
     try:
-        current_user_id = "17c9109e-cb20-4723-be49-c26b8343cd19"  # Using the Firebase user ID from database
+        current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
         
         comment = PostComment.query.get(comment_id)
         if not comment:
@@ -621,7 +644,7 @@ def delete_comment(comment_id):
         description: Comment not found
     """
     try:
-        current_user_id = "17c9109e-cb20-4723-be49-c26b8343cd19"  # Using the Firebase user ID from database
+        current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
         
         comment = PostComment.query.get(comment_id)
         if not comment:
@@ -659,7 +682,7 @@ def toggle_bookmark_post(post_id):
         description: Post not found
     """
     try:
-        current_user_id = "17c9109e-cb20-4723-be49-c26b8343cd19"  # Using the Firebase user ID from database
+        current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
         
         # Check if post exists
         post = Post.query.get(post_id)
@@ -741,7 +764,7 @@ def search_posts():
         # Get current user ID if authenticated
         current_user_id = None
         try:
-            current_user_id = "17c9109e-cb20-4723-be49-c26b8343cd19"  # Using the Firebase user ID from database
+            current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
         except:
             pass
         
@@ -863,7 +886,7 @@ def update_post(post_id):
         description: Forbidden - not the post owner
     """
     try:
-        current_user_id = "17c9109e-cb20-4723-be49-c26b8343cd19"  # Using the Firebase user ID from database
+        current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
         
         # Check if post exists
         post = Post.query.get(post_id)
@@ -931,7 +954,7 @@ def delete_post(post_id):
         description: Forbidden - not the post owner
     """
     try:
-        current_user_id = "17c9109e-cb20-4723-be49-c26b8343cd19"  # Using the Firebase user ID from database
+        current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")  # Convert to UUID object
         
         # Check if post exists
         post = Post.query.get(post_id)

@@ -33,8 +33,8 @@ app.config.from_object(config[config_name])
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'jwt-secret-key-change-in-production')
 
-# Force database configuration for linecricket25
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:root@localhost:5432/linecricket25'
+# Database configuration from environment variables
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/linecricket25')
 
 # AWS Cognito Configuration
 app.config['COGNITO_REGION'] = os.environ.get('COGNITO_REGION')
@@ -216,7 +216,118 @@ def internal_error(error):
 # Health check endpoint
 @app.route('/api/health')
 def health_check():
-    return jsonify({'status': 'healthy', 'timestamp': datetime.utcnow().isoformat()})
+    return jsonify({'status': 'healthy', 'timestamp': datetime.utcnow().isoformat(), 'version': '1.0.1'})
+
+# Direct posts endpoint to bypass route issues
+@app.route('/api/posts-direct')
+def get_posts_direct():
+    """Direct posts endpoint to bypass route caching issues"""
+    try:
+        from models.post import Post
+        
+        # Get posts directly
+        posts = Post.query.filter(Post.visibility == 'public').limit(10).all()
+        print(f"DEBUG: Found {len(posts)} posts in query")
+        
+        posts_data = []
+        for i, post in enumerate(posts):
+            try:
+                print(f"DEBUG: Processing post {i+1}: {post.content[:30]}...")
+                post_dict = post.to_dict()
+                posts_data.append(post_dict)
+                print(f"DEBUG: Successfully converted post {i+1}")
+            except Exception as e:
+                print(f"DEBUG: Error converting post {i+1}: {e}")
+                import traceback
+                traceback.print_exc()
+                continue
+        
+        return jsonify({
+            'success': True,
+            'posts': posts_data,
+            'total': len(posts_data),
+            'message': 'Direct posts endpoint working'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# Working posts endpoint with direct database query
+@app.route('/api/posts-working')
+def get_posts_working():
+    """Working posts endpoint with direct database query"""
+    try:
+        import psycopg2
+        
+        # Connect to database directly
+        conn = psycopg2.connect('postgresql://postgres:postgres@localhost:5432/linecricket25')
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT p.id, p.content, p.post_type, p.visibility, p.likes_count, p.comments_count, 
+                   p.shares_count, p.created_at, p.user_id, u.username, p.image_url, p.video_url, p.location
+            FROM posts p
+            LEFT JOIN users u ON p.user_id = u.id
+            WHERE p.visibility = 'public' 
+            ORDER BY p.created_at DESC 
+            LIMIT 10
+        """)
+        
+        posts = []
+        for row in cursor.fetchall():
+            # Create author object
+            author = {
+                'id': str(row[8]) if row[8] else None,
+                'username': row[9] or 'Unknown User',
+                'initials': (row[9] or 'U')[:2].upper() if row[9] else 'U'
+            }
+            
+            # Parse image_url if it's JSON
+            image_url = None
+            if row[10] is not None:
+                try:
+                    if isinstance(row[10], str):
+                        import json
+                        image_data = json.loads(row[10])
+                    else:
+                        image_data = row[10]
+                    
+                    # Return all images as array
+                    if isinstance(image_data, list) and len(image_data) > 0:
+                        image_url = image_data  # Return all images
+                    elif isinstance(image_data, str) and image_data.strip():
+                        image_url = [image_data]  # Convert single string to array
+                except:
+                    image_url = None
+            
+            post = {
+                'id': str(row[0]),
+                'content': row[1],
+                'post_type': row[2],
+                'visibility': row[3],
+                'likes_count': row[4] or 0,
+                'comments_count': row[5] or 0,
+                'shares_count': row[6] or 0,
+                'created_at': row[7].isoformat() if row[7] else None,
+                'user_id': str(row[8]) if row[8] else None,
+                'author': author,
+                'image_url': image_url,
+                'video_url': row[11] if row[11] and row[11].strip() else None,
+                'location': row[12] if row[12] and row[12].strip() else None
+            }
+            posts.append(post)
+        
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'posts': posts,
+            'total': len(posts),
+            'message': 'Posts fetched directly from database'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # Database initialization endpoint
 @app.route('/api/init-db')

@@ -1135,6 +1135,63 @@ class ApiService {
     return this.handleResponse(response);
   }
 
+<<<<<<< HEAD
+=======
+  // Posts API
+  async getPosts(page: number = 1, limit: number = 10): Promise<{
+    success: boolean;
+    posts: any[];
+    total: number;
+    current_page: number;
+    pages: number;
+  }> {
+    console.log(`🌐 Fetching posts - Page: ${page}, Limit: ${limit}`);
+    
+    // Try the working posts endpoint first
+    let response;
+    try {
+      response = await this.makeRequest(`${API_BASE_URL}/api/posts-working`, {
+        method: 'GET'
+      });
+    } catch (error) {
+      console.log('Working posts endpoint failed, trying feed endpoint...', error);
+      try {
+        response = await this.makeRequest(`${API_BASE_URL}/api/feed?page=${page}&per_page=${limit}`, {
+          method: 'GET'
+        });
+      } catch (fallbackError) {
+        console.error('Both endpoints failed:', fallbackError);
+        throw fallbackError;
+      }
+    }
+
+    console.log('📥 Posts response:', response);
+    
+    // Transform the response to match expected format
+    if (response.posts) {
+      return {
+        success: true,
+        posts: response.posts,
+        total: response.total || response.posts.length,
+        current_page: response.current_page || page,
+        pages: response.pages || 1
+      };
+    }
+    
+    // Handle simple posts endpoint response
+    if (response.success && response.posts) {
+      return {
+        success: true,
+        posts: response.posts,
+        total: response.total || response.posts.length,
+        current_page: page,
+        pages: 1
+      };
+    }
+    
+    return this.handleResponse(response);
+  }
+>>>>>>> 22158ac5d1d06ca18cc5cf739625cf0b44215b68
 
   // Utility methods
 }

@@ -21,7 +21,7 @@ class Post(BaseModel):
     post_type = db.Column(db.String(50), default='general', nullable=False)
     visibility = db.Column(db.String(20), default='public')
     is_pinned = db.Column(db.Boolean, default=False)
-    is_active = db.Column(db.Boolean, default=True)
+    # is_active = db.Column(db.Boolean, default=True)  # Temporarily commented out due to schema mismatch
     
     # Engagement tracking
     engagement_score = db.Column(db.Float, default=0.0)
@@ -49,11 +49,11 @@ class Post(BaseModel):
     registration_fee = db.Column(db.Float)
     registration_deadline = db.Column(db.Date)
     
-    # Match specific fields
-    match_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('matches.id'), nullable=True)
+    # Match specific fields - temporarily commented out due to schema mismatch
+    # match_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('matches.id'), nullable=True)
     
-    # Share specific fields
-    shared_from_post_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('posts.id'), nullable=True)
+    # Share specific fields - temporarily commented out due to schema mismatch
+    # shared_from_post_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('posts.id'), nullable=True)
     
     # Post metadata
     post_category = db.Column(db.String(50))
@@ -273,8 +273,8 @@ class Post(BaseModel):
     def get_feed_posts(cls, user_id=None, page=1, per_page=20, post_type=None, hashtag=None):
         """Get feed posts with various filters"""
         query = cls.query.filter(
-            cls.visibility == 'public',
-            cls.is_active == True  # Only show active posts
+            cls.visibility == 'public'
+            # cls.is_active == True  # Temporarily commented out due to schema mismatch
         )
         
         # Filter by post type
@@ -303,8 +303,8 @@ class Post(BaseModel):
     def get_trending_posts(cls, page=1, per_page=20, timeframe='24h'):
         """Get trending posts based on engagement"""
         query = cls.query.filter(
-            cls.visibility == 'public',
-            cls.is_active == True  # Only show active posts
+            cls.visibility == 'public'
+            # cls.is_active == True  # Temporarily commented out due to schema mismatch
         )
         
         # Filter by timeframe
