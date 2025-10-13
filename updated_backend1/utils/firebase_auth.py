@@ -112,3 +112,5 @@ def is_token_valid(token: str) -> bool:
         True if valid, False otherwise
     """
     return get_user_id_from_token(token) is not None
+
+

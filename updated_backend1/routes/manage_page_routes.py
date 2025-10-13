@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from models import db, ProfilePage, PageAdmin, User, AcademyProgram, AcademyStudent
+from models.details import AcademyDetails, VenueDetails, CommunityDetails
 from datetime import datetime
 import json
 
@@ -326,6 +327,70 @@ def create_manage_page():
         )
         
         db.session.add(profile_page)
+        db.session.flush()  # Get the page_id before creating details
+        
+        # Create appropriate detail record based on page type
+        try:
+            if data['page_type'] == 'Academy':
+                academy_details = AcademyDetails(
+                    page_id=profile_page.page_id,
+                    academy_type=data.get('academy_type'),
+                    level=data.get('level'),
+                    established_year=data.get('established_year'),
+                    accreditation=data.get('accreditation'),
+                    equipment_provided=data.get('equipment_provided', False),
+                    coaching_staff_count=data.get('coaching_staff_count', 0),
+                    programs_offered=json.dumps(data.get('programs_offered', [])),
+                    age_groups=data.get('age_groups'),
+                    batch_timings=json.dumps(data.get('batch_timings', [])),
+                    fees_structure=json.dumps(data.get('fees_structure', {})),
+                    total_students=data.get('total_students', 0),
+                    successful_placements=data.get('successful_placements', 0)
+                )
+                db.session.add(academy_details)
+                
+            elif data['page_type'] == 'Pitch':
+                venue_details = VenueDetails(
+                    page_id=profile_page.page_id,
+                    venue_type=data.get('venue_type'),
+                    pitch_type=data.get('ground_type'),  # Map ground_type to pitch_type
+                    capacity=data.get('capacity'),
+                    lighting_available=data.get('floodlights', False),
+                    parking_available=data.get('parking_available', False),
+                    changing_rooms=data.get('changing_rooms', False),
+                    equipment_rental=data.get('equipment_rental', False),
+                    booking_rates=json.dumps(data.get('booking_rates', {})),
+                    amenities=json.dumps(data.get('amenities', [])),
+                    operating_hours=json.dumps(data.get('operating_hours', {})),
+                    booking_advance_days=data.get('booking_advance_days', 7),
+                    minimum_booking_hours=data.get('minimum_booking_hours', 1.0),
+                    maximum_booking_hours=data.get('maximum_booking_hours', 8.0),
+                    created_by=current_user_id,
+                    updated_by=current_user_id
+                )
+                db.session.add(venue_details)
+                
+            elif data['page_type'] == 'Community':
+                community_details = CommunityDetails(
+                    page_id=profile_page.page_id,
+                    community_type=data.get('community_type'),
+                    member_count=data.get('member_count', 0),
+                    community_rules=data.get('community_rules'),
+                    meeting_schedule=json.dumps(data.get('meeting_schedule', [])),
+                    membership_fee=data.get('membership_fee', 0),
+                    membership_duration=data.get('membership_duration'),
+                    community_events_count=data.get('community_events_count', 0),
+                    active_members=data.get('active_members', 0),
+                    community_guidelines=data.get('community_guidelines'),
+                    created_by=current_user_id,
+                    updated_by=current_user_id
+                )
+                db.session.add(community_details)
+                
+        except Exception as detail_error:
+            print(f"Error creating detail record: {detail_error}")
+            # Continue with page creation even if detail creation fails
+        
         db.session.commit()
         
         return jsonify({

@@ -362,3 +362,5 @@ The PostgreSQL search integration is successful when:
 ---
 
 **Note**: This integration provides enterprise-grade search capabilities using PostgreSQL's advanced full-text search features, ensuring fast, accurate, and scalable search functionality for TheLineCricket application.
+
+

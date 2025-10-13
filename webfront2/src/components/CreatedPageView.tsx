@@ -219,15 +219,10 @@ export function CreatedPageView({ onBack, pageId, pageName, pageType }: CreatedP
         image_caption: images.length > 0 ? caption.trim() : undefined, // Use caption as image caption
         video_url: video || undefined, // Rename video to video_url for clarity
         location: location || undefined,
-<<<<<<< HEAD
         post_type: video ? 'video' : (images.length > 0 ? 'image' : 'text'),
         visibility: visibility,
         page_id: pageId, // Include the page ID for page-specific posts
         page_type: pageType // Include the page type for proper categorization
-=======
-        post_type: 'general',
-        visibility: visibility
->>>>>>> 22158ac5d1d06ca18cc5cf739625cf0b44215b68
       };
       
       console.log('📤 Sending post data:', postData);

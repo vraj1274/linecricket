@@ -191,21 +191,19 @@ export function PostCard({ post, onNavigateToProfile }: PostCardProps) {
       {(post.image_url || post.video_url) && (
         <div className="mb-4">
           <div className="flex items-center text-gray-500 text-sm mb-2">
-<<<<<<< HEAD
             {post.image_url && <Image className="w-4 h-4 mr-1" />}
             {post.video_url && <Video className="w-4 h-4 mr-1" />}
-            {post.image_url ? 'Image' : 'Video'}
-=======
-            <Image className="w-4 h-4 mr-1" />
-            {Array.isArray(post.image_url) ? `${post.image_url.length} Images` : 'Image'}
+            {post.image_url ? (Array.isArray(post.image_url) ? `${post.image_url.length} Images` : 'Image') : 'Video'}
           </div>
-          <ErrorBoundary>
-            <ImageCarousel 
-              images={Array.isArray(post.image_url) ? post.image_url : (post.image_url ? [post.image_url] : [])}
-              alt="Post images"
-              className="w-full"
-            />
-          </ErrorBoundary>
+          {post.image_url && (
+            <ErrorBoundary>
+              <ImageCarousel 
+                images={Array.isArray(post.image_url) ? post.image_url : (post.image_url ? [post.image_url] : [])}
+                alt="Post images"
+                className="w-full"
+              />
+            </ErrorBoundary>
+          )}
         </div>
       )}
 
@@ -227,7 +225,6 @@ export function PostCard({ post, onNavigateToProfile }: PostCardProps) {
             >
               Your browser does not support the video tag.
             </video>
->>>>>>> 22158ac5d1d06ca18cc5cf739625cf0b44215b68
           </div>
           <MediaDisplay 
             imageUrl={post.image_url}

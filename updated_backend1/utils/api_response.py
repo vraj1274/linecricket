@@ -199,3 +199,5 @@ class ValidationHelper:
         digits_only = re.sub(r'\D', '', phone)
         # Check if it has 10-15 digits
         return 10 <= len(digits_only) <= 15
+
+

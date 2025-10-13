@@ -1135,8 +1135,6 @@ class ApiService {
     return this.handleResponse(response);
   }
 
-<<<<<<< HEAD
-=======
   // Posts API
   async getPosts(page: number = 1, limit: number = 10): Promise<{
     success: boolean;
@@ -1191,7 +1189,6 @@ class ApiService {
     
     return this.handleResponse(response);
   }
->>>>>>> 22158ac5d1d06ca18cc5cf739625cf0b44215b68
 
   // Utility methods
 }
