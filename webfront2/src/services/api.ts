@@ -1127,6 +1127,7 @@ class ApiService {
     content: string;
     image_url?: string;
     image_caption?: string;
+    video_url?: string;
     location?: string;
     post_type?: string;
     visibility?: string;

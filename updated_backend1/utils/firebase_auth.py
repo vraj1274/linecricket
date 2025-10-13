@@ -58,12 +58,12 @@ def verify_firebase_token(token: str) -> Optional[Dict[str, Any]]:
         if token in mock_users:
             return mock_users[token]
         else:
-            # For any other token, use it as a user ID
+            # For any other token, use the fallback user ID
             return {
-                "uid": token,
-                "email": f"{token}@example.com",
-                "username": token,
-                "name": f"User {token}"
+                "uid": "17c9109e-cb20-4723-be49-c26b8343cd19",
+                "email": "test@example.com",
+                "username": "testuser",
+                "name": "Test User"
             }
             
     except Exception as e:

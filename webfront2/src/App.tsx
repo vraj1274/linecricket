@@ -43,6 +43,7 @@ import { ToastProvider } from './contexts/ToastContext';
 import { UserProfileProvider } from './contexts/UserProfileContext';
 import { ProfileSwitchProvider } from './contexts/ProfileSwitchContext';
 import { useFirebaseAuth } from './hooks/useFirebaseAuth';
+import { CreatePost } from './components/CreatePost';
 
 export type PageType = 'new-landing' | 'home' | 'search' | 'create' | 'create-page' | 'page-view' | 'matches' | 'notifications' | 'messages' | 'login' | 'signup' | 'edit-profile' | 'profile' | 'personal-info' | 'forgot-password' | 'otp-verification' | 'reset-password' | 'new-profile' | 'academy-profile' | 'venue-profile' | 'coach-profile' | 'player-profile' | 'community-profile' | 'dynamic-profile' | 'public-profile' | 'generic-profile' | 'social-profile' | 'my-profile' | 'created-page' | 'test-page' | 'pitch-profile';
 
@@ -301,10 +302,13 @@ function AppContent() {
       case 'search':
         return <SearchPage />;
       case 'create':
-        return <CreatePage onCreatePost={() => {
-          setPostsRefreshTrigger(prev => prev + 1);
-          setCurrentPage('home');
-        }} />;
+        return <CreatePost 
+          onCreatePost={() => {
+            setPostsRefreshTrigger(prev => prev + 1);
+            setCurrentPage('home');
+          }}
+          onBack={() => setCurrentPage('home')}
+        />;
       case 'create-page':
         return <ComprehensiveProfileCreation 
           onBack={() => setCurrentPage('home')} 
