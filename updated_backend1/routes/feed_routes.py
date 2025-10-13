@@ -2,8 +2,8 @@ from flask import Blueprint, request, jsonify
 from models import db, Post, PostLike, PostComment, PostBookmark, User
 from datetime import datetime
 import re
-import uuid
 from utils.firebase_auth import get_user_id_from_token, get_user_info_from_token
+import uuid
 
 feed_bp = Blueprint('feed', __name__)
 
@@ -68,6 +68,7 @@ def get_feed():
             print(f"❌ Authentication error: {e}")
             # Fallback to hardcoded user for testing
             current_user_id = uuid.UUID("17c9109e-cb20-4723-be49-c26b8343cd19")
+            pass  # Not authenticated, show public posts only
         
         if search_query:
             # Search posts

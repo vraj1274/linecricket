@@ -6,24 +6,22 @@ import { useMobileApp } from '../contexts/MobileAppContext';
 import { useUserProfile } from '../contexts/UserProfileContext';
 import { useFirebase } from '../contexts/FirebaseContext';
 import { useProfileSwitch } from '../contexts/ProfileSwitchContext';
+import { AppDownloadModal } from './AppDownloadModal';
 
 interface SidebarProps {
   currentPage: PageType;
   onPageChange: (page: PageType, data?: any) => void;
   onLogout: () => void;
   onProfileTypeSelect?: (type: 'player' | 'coach' | 'venue' | 'academy' | 'community') => void;
+  onAppDownloadModalChange?: (isOpen: boolean) => void;
 }
 
-export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSelect }: SidebarProps) {
+export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSelect, onAppDownloadModalChange }: SidebarProps) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showProfileSwitch, setShowProfileSwitch] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [profileToDelete, setProfileToDelete] = useState<any>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [deletePassword, setDeletePassword] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-  const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
+  const [showAppDownloadModal, setShowAppDownloadModal] = useState(false);
+  const [modalFeature, setModalFeature] = useState('');
   const { showMobileAppModal } = useMobileApp();
   
   // Get real user data from contexts
@@ -71,188 +69,6 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
         return <Users className="w-4 h-4" />;
       default:
         return <User className="w-4 h-4" />;
-    }
-  };
-
-  // Handle delete page
-  const handleDeletePage = (page: any) => {
-    setProfileToDelete(page);
-    setShowDeleteModal(true);
-  };
-
-  // Confirm delete page
-  const confirmDeletePage = async () => {
-    console.log('🔥 DELETE BUTTON CLICKED!');
-    console.log('🔥 Page to delete:', profileToDelete);
-    
-    if (!profileToDelete) {
-      console.error('❌ No page selected for deletion');
-      alert('No page selected for deletion');
-      return;
-    }
-
-    // Verify password before deletion
-    if (!deletePassword.trim()) {
-      setPasswordError('Please enter your password to confirm deletion.');
-      return;
-    }
-
-    const isPasswordValid = await verifyPassword(deletePassword);
-    if (!isPasswordValid) {
-      return; // Error is already set in verifyPassword
-    }
-    
-    try {
-      console.log('🚀 Starting deletion of page:', profileToDelete);
-      setIsDeleting(true);
-      
-      // Try context delete function first
-      try {
-        console.log('📞 Calling deleteProfile with ID:', profileToDelete.id);
-        await deleteProfile(profileToDelete.id);
-        console.log('✅ Context deleteProfile succeeded');
-      } catch (contextError) {
-        console.warn('⚠️ Context deleteProfile failed, trying direct API call:', contextError);
-        
-        // Fallback: Direct API call for page deletion
-        const apiUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/profiles/${profileToDelete.id}`;
-        console.log('🌐 Direct API call to:', apiUrl);
-        
-        const response = await fetch(apiUrl, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error(`API call failed: ${response.statusText}`);
-        }
-        
-        console.log('✅ Direct API call succeeded');
-        
-        // Manually update the page list since context didn't work
-        // This is a fallback - in a real app you'd want to refresh the context
-        console.log('🔄 Manual page list update (fallback)');
-      }
-      
-      console.log('✅ Page deleted successfully:', profileToDelete.name);
-      
-      // Close modal and reset state
-      setShowDeleteModal(false);
-      setProfileToDelete(null);
-      setDeletePassword('');
-      setPasswordError('');
-      
-      // Show success message
-      console.log('🎉 Page deletion completed');
-      alert(`Page "${profileToDelete.name}" deleted successfully!`);
-      
-    } catch (error) {
-      console.error('❌ Error deleting page:', error);
-      alert(`Failed to delete page: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  // Cancel delete
-  const cancelDelete = () => {
-    setShowDeleteModal(false);
-    setProfileToDelete(null);
-    setDeletePassword('');
-    setPasswordError('');
-  };
-
-  // Handle keyboard events for delete modal
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (showDeleteModal) {
-        if (e.key === 'Enter' && !isDeleting) {
-          e.preventDefault();
-          confirmDeletePage();
-        } else if (e.key === 'Escape') {
-          e.preventDefault();
-          cancelDelete();
-        }
-      }
-    };
-
-    if (showDeleteModal) {
-      document.addEventListener('keydown', handleKeyDown);
-      return () => document.removeEventListener('keydown', handleKeyDown);
-    }
-  }, [showDeleteModal, isDeleting, profileToDelete]);
-
-  // Test scrollbar functionality
-  const testScrollbar = () => {
-    const container = document.querySelector('.profile-switch-container');
-    if (container) {
-      console.log('🧪 Testing scrollbar...');
-      console.log('📏 Container height:', container.clientHeight);
-      console.log('📏 Scroll height:', container.scrollHeight);
-      console.log('📏 Can scroll:', container.scrollHeight > container.clientHeight);
-      
-      if (container.scrollHeight > container.clientHeight) {
-        console.log('✅ Scrollbar should be visible');
-        // Test scroll
-        container.scrollTo({ top: 50, behavior: 'smooth' });
-        setTimeout(() => {
-          container.scrollTo({ top: 0, behavior: 'smooth' });
-        }, 1000);
-      } else {
-        console.log('⚠️ Not enough content to scroll');
-      }
-    }
-  };
-
-  // Scroll functions for profile list
-  const scrollUp = () => {
-    const container = document.querySelector('.profile-switch-container');
-    if (container) {
-      container.scrollBy({ top: -80, behavior: 'smooth' });
-    }
-  };
-
-  const scrollDown = () => {
-    const container = document.querySelector('.profile-switch-container');
-    if (container) {
-      container.scrollBy({ top: 80, behavior: 'smooth' });
-    }
-  };
-
-  // Handle scroll events to update scroll state
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const container = e.currentTarget;
-    const scrollTop = container.scrollTop;
-    const scrollHeight = container.scrollHeight;
-    const clientHeight = container.clientHeight;
-    
-    setScrollPosition(scrollTop);
-    setCanScrollUp(scrollTop > 0);
-    setCanScrollDown(scrollTop < scrollHeight - clientHeight);
-  };
-
-  // Handle keyboard navigation
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'ArrowUp' && canScrollUp) {
-      e.preventDefault();
-      scrollUp();
-    } else if (e.key === 'ArrowDown' && canScrollDown) {
-      e.preventDefault();
-      scrollDown();
-    } else if (e.key === 'Home') {
-      e.preventDefault();
-      const container = document.querySelector('.profile-switch-container');
-      if (container) {
-        container.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-    } else if (e.key === 'End') {
-      e.preventDefault();
-      const container = document.querySelector('.profile-switch-container');
-      if (container) {
-        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-      }
     }
   };
 
@@ -312,65 +128,29 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
     setShowProfileMenu(false);
   };
 
-  // Password verification for page deletion
-  const verifyPassword = async (password: string) => {
-    try {
-      setIsVerifyingPassword(true);
-      setPasswordError('');
-      
-      // Get current user's email for verification
-      const userEmail = firebaseUser?.email;
-      if (!userEmail) {
-        setPasswordError('User email not found. Please log in again.');
-        return false;
-      }
-
-      // For now, we'll use a simple approach - in production, you would verify the password with Firebase
-      // This is a mock verification - in real implementation, you would use Firebase Auth to re-authenticate
-      if (password.length < 6) {
-        setPasswordError('Password must be at least 6 characters long.');
-        return false;
-      }
-
-      // Mock verification - in production, use Firebase Auth
-      // const credential = firebase.auth.EmailAuthProvider.credential(userEmail, password);
-      // await firebaseUser.reauthenticateWithCredential(credential);
-      
-      // For development, accept any password longer than 6 characters
-      console.log('✅ Password verification successful');
-      return true;
-      
-    } catch (error) {
-      console.error('❌ Password verification failed:', error);
-      setPasswordError('Invalid password. Please try again.');
-      return false;
-    } finally {
-      setIsVerifyingPassword(false);
-    }
-  };
-
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setDeletePassword(e.target.value);
-    setPasswordError(''); // Clear error when user types
-  };
-
-  const handleProfileSwitch = (profileId: number) => {
-    setShowProfileSwitch(false);
-    setShowProfileMenu(false);
-    // For now, since we have one logged-in user, we'll show a message
-    // In the future, this could handle multiple accounts or profile views
-    alert(`Profile view updated!`);
-  };
-
   const handleMenuItemClick = (pageId: PageType) => {
     console.log('🎯 Sidebar menu item clicked:', pageId);
     
+    // Show download app modal for Messages and Notifications
+    if (pageId === 'messages') {
+      setModalFeature('Messages');
+      setShowAppDownloadModal(true);
+      onAppDownloadModalChange?.(true);
+      return;
+    }
+    
+    if (pageId === 'notifications') {
+      setModalFeature('Notifications');
+      setShowAppDownloadModal(true);
+      onAppDownloadModalChange?.(true);
+      return;
+    }
     
     // Handle profile navigation separately to avoid conflicts
     if (pageId === 'profile') {
-      console.log('👤 Profile button clicked - navigating to my-profile');
-      // Navigate to user's actual profile, not dynamic profile view
-      onPageChange('my-profile');
+      console.log('👤 Profile button clicked - navigating to profile');
+      // Navigate to user's profile view
+      onPageChange('profile');
     } else {
       console.log('📄 Other page clicked - navigating to:', pageId);
       // All other pages navigate directly
@@ -380,7 +160,7 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
 
   return (
     <>
-      <div className="fixed top-0 left-0 h-screen w-[280px] bg-gray-50 border-r border-gray-200 z-40 flex flex-col">
+      <div className="fixed top-0 left-0 h-screen w-[280px] bg-gray-50 border-r border-gray-200 z-40 flex flex-col" data-sidebar>
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto sidebar-scrollbar cricket-scrollbar">
           <div className="p-6">
@@ -447,27 +227,27 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
               >
                 <div 
                   className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold group-hover:scale-105 transition-transform duration-200"
-                  style={{ background: currentUser.color }}
-                >
-                  {currentUser.avatar}
-                </div>
-                <div className="flex-1">
+                style={{ background: currentUser.color }}
+              >
+                {currentUser.avatar}
+              </div>
+              <div className="flex-1">
                   <p className="text-sm text-gray-900 group-hover:text-gray-700 transition-colors duration-200">{currentUser.name}</p>
                   <p className="text-xs text-gray-500 group-hover:text-gray-600 transition-colors duration-200">{currentUser.username}</p>
-                </div>
+              </div>
               </button>
               <div className="flex items-center space-x-1">
                 <button 
                   onClick={() => setShowProfileSwitch(!showProfileSwitch)}
-                  className="p-1 hover:bg-gray-100 rounded-lg transition-colors duration-200 hover:scale-105"
-                  title="Switch Page"
-                  aria-label="Switch Page"
+                  className="p-1 hover:bg-orange-100 hover:text-orange-600 rounded-lg transition-all duration-200 ease-in-out"
+                  title="Switch Profile"
+                  aria-label="Switch Profile"
                 >
                   <Users className="w-4 h-4" />
                 </button>
                 <button 
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200 hover:scale-105"
+                  className="p-2 hover:bg-orange-100 hover:text-orange-600 rounded-lg transition-all duration-200 ease-in-out"
                   title="Profile Menu"
                   aria-label="Profile Menu"
                 >
@@ -483,9 +263,9 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
       {showProfileSwitch && (
         <div className="fixed bottom-20 left-6 bg-white rounded-xl shadow-lg border border-gray-200 z-50 w-72 backdrop-blur-none">
           <div className="py-2">
-            <div className="px-4 py-3 border-b border-gray-100">
+            <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-orange-50 to-slate-50">
               <div className="flex items-center space-x-2">
-                <Users className="w-4 h-4 text-gray-600" />
+                <Users className="w-4 h-4 text-orange-600" />
                 <h3 className="text-sm font-semibold text-gray-900">My Pages</h3>
               </div>
               <p className="text-xs text-gray-500 mt-1">
@@ -493,374 +273,70 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
               </p>
             </div>
             
-            <div 
-              className="max-h-64 overflow-y-auto profile-switch-scrollbar profile-list-scrollbar profile-switch-container relative scrollbar-thin scrollbar-thumb-blue-500 scrollbar-track-blue-100"
-              onScroll={handleScroll}
-              onKeyDown={handleKeyDown}
-              tabIndex={0}
-              style={{
-                scrollbarWidth: 'auto',
-                scrollbarColor: '#3b82f6 #e0f2fe'
-              }}
-            >
-              {/* Scroll Controls */}
-              {availableProfiles.length > 3 && (
-                <div className="absolute right-2 top-2 z-20 flex flex-col space-y-1">
-                  <button
-                    onClick={() => scrollUp()}
-                    disabled={!canScrollUp}
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs transition-all duration-200 ${
-                      canScrollUp 
-                        ? 'bg-blue-500 text-white hover:bg-blue-600 shadow-md' 
-                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    }`}
-                    title="Scroll Up"
-                  >
-                    ↑
-                  </button>
-                  <button
-                    onClick={() => scrollDown()}
-                    disabled={!canScrollDown}
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs transition-all duration-200 ${
-                      canScrollDown 
-                        ? 'bg-blue-500 text-white hover:bg-blue-600 shadow-md' 
-                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    }`}
-                    title="Scroll Down"
-                  >
-                    ↓
-                  </button>
-                </div>
-              )}
-              
-              {/* Enhanced Scroll Progress Indicator */}
-              {availableProfiles.length > 3 && (
-                <div className="absolute top-0 left-0 right-0 h-2 bg-gray-200 z-10 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 transition-all duration-300 ease-out rounded-full"
-                    style={{ 
-                      width: `${Math.min(100, (scrollPosition / 200) * 100)}%` 
-                    }}
-                  ></div>
-                </div>
-              )}
-              
-              {/* Scrollbar Status Indicator */}
-              {availableProfiles.length > 3 && (
-                <div className="absolute top-8 right-2 z-15 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 text-xs text-gray-600 shadow-sm">
-                  {canScrollUp ? '↑' : ''} {canScrollDown ? '↓' : ''}
-                </div>
-              )}
-              
-              {/* Scroll Shadow Indicators */}
-              {availableProfiles.length > 3 && (
-                <>
-                  {/* Top Shadow */}
-                  <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-white to-transparent z-5 pointer-events-none"></div>
-                  {/* Bottom Shadow */}
-                  <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-white to-transparent z-5 pointer-events-none"></div>
-                </>
-              )}
-              
-              {/* Enhanced Search and Filter Controls */}
-              {availableProfiles.length > 1 && (
-                <div className="px-4 py-3 border-b border-gray-100 space-y-3">
-                  {/* Search Input */}
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search profiles..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                    {searchQuery && (
-                      <button
-                        onClick={clearSearch}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        ×
-                      </button>
-                    )}
-                  </div>
-                  
-                  {/* Filter Controls */}
-                  <div className="flex space-x-2">
-                    {/* Type Filter */}
-                    <select
-                      value={filterType}
-                      onChange={(e) => setFilter(e.target.value)}
-                      className="flex-1 px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="all">All Types</option>
-                      <option value="player">Players</option>
-                      <option value="coach">Coaches</option>
-                      <option value="academy">Academies</option>
-                      <option value="venue">Venues</option>
-                      <option value="community">Communities</option>
-                    </select>
-                    
-                    {/* Sort By */}
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSort(e.target.value, sortOrder)}
-                      className="flex-1 px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="name">Name</option>
-                      <option value="type">Type</option>
-                      <option value="created">Created</option>
-                      <option value="active">Active</option>
-                    </select>
-                    
-                    {/* Sort Order */}
-                    <button
-                      onClick={() => setSort(sortBy, sortOrder === 'asc' ? 'desc' : 'asc')}
-                      className="px-3 py-2 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      title={`Sort ${sortOrder === 'asc' ? 'Descending' : 'Ascending'}`}
-                    >
-                      {sortOrder === 'asc' ? '↑' : '↓'}
-                    </button>
-                  </div>
-                  
-                  {/* Clear All Filters */}
-                  {(searchQuery || filterType !== 'all' || sortBy !== 'name' || sortOrder !== 'asc') && (
-                    <button
-                      onClick={clearAllFilters}
-                      className="w-full px-3 py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors"
-                    >
-                      Clear All Filters
-                    </button>
-                  )}
-                  
-                  {/* Search Status */}
-                  <div className="text-xs text-center">
-                    {searchLoading ? (
-                      <div className="flex items-center justify-center space-x-2 text-blue-600">
-                        <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                        <span>Searching PostgreSQL database...</span>
-                      </div>
-                    ) : searchError ? (
-                      <div className="text-red-600">
-                        ❌ Search error: {searchError}
-                      </div>
-                    ) : (
-                      <div className="text-gray-500">
-                        Showing {filteredProfiles.length} of {availableProfiles.length} profiles
-                        {searchQuery && (
-                          <span className="ml-2 text-blue-600">
-                            (PostgreSQL search results)
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-              
-              {/* Scroll Controls */}
-              {availableProfiles.length > 3 && (
-                <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-blue-50">
-                  <button
-                    onClick={scrollToTop}
-                    disabled={isScrolling || !canScrollUp}
-                    className={`flex items-center space-x-1 text-xs transition-colors px-2 py-1 rounded-md ${
-                      canScrollUp 
-                        ? 'text-gray-600 hover:text-blue-600 hover:bg-blue-100' 
-                        : 'text-gray-400 cursor-not-allowed'
-                    } disabled:opacity-50`}
-                  >
-                    <span>↑ Top</span>
-                    {canScrollUp && <div className="w-1 h-1 bg-blue-400 rounded-full animate-pulse"></div>}
-                  </button>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs text-gray-500">
-                      {filteredProfiles.length} of {availableProfiles.length} profiles
-                    </span>
-                    {isScrolling && (
-                      <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full animate-pulse"></div>
-                    )}
-                    {/* Scroll Indicator */}
-                    <div className="flex items-center space-x-1">
-                      <div className="w-1 h-1 bg-blue-400 rounded-full"></div>
-                      <div className="w-1 h-1 bg-blue-300 rounded-full"></div>
-                      <div className="w-1 h-1 bg-blue-200 rounded-full"></div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={scrollToBottom}
-                    disabled={isScrolling || !canScrollDown}
-                    className={`flex items-center space-x-1 text-xs transition-colors px-2 py-1 rounded-md ${
-                      canScrollDown 
-                        ? 'text-gray-600 hover:text-blue-600 hover:bg-blue-100' 
-                        : 'text-gray-400 cursor-not-allowed'
-                    } disabled:opacity-50`}
-                  >
-                    <span>↓ Bottom</span>
-                    {canScrollDown && <div className="w-1 h-1 bg-blue-400 rounded-full animate-pulse"></div>}
-                  </button>
-                </div>
-              )}
-              
-              {/* Test Content to Force Scrollbar */}
-              <div className="px-4 py-2 bg-blue-50 border-b border-blue-200">
-                <p className="text-xs text-blue-800">
-                  <strong>TEST SCROLLBAR:</strong> This content should make the container scrollable
-                </p>
-              </div>
-              
-              {/* Filter Status Indicator */}
-              {(searchQuery || filterType !== 'all' || sortBy !== 'name' || sortOrder !== 'asc') && (
-                <div className="px-4 py-2 bg-blue-50 border-b border-blue-200">
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-blue-700 font-medium">Active Filters:</span>
-                      {searchQuery && (
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
-                          Search: "{searchQuery}"
-                        </span>
-                      )}
-                      {filterType !== 'all' && (
-                        <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full">
-                          Type: {filterType}
-                        </span>
-                      )}
-                      {sortBy !== 'name' && (
-                        <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full">
-                          Sort: {sortBy} {sortOrder}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-              
+            <div className="max-h-64 overflow-y-auto">
               {/* Available Profiles from Context */}
               {filteredProfiles.length > 0 ? (
                 filteredProfiles.map((profile) => (
                 <div
                   key={profile.id}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 transition-colors group ${
-                    profile.isActive ? 'bg-blue-50' : ''
-                  }`}
-                >
-                  <button
-                    id={`profile-${profile.id}`}
-                    onClick={async () => {
-                      try {
-                        console.log('🔄 Switching to page:', profile.name, 'Type:', profile.type);
-                        
-                        // Switch profile first
-                        await switchProfile(profile.id);
-                        
-                        // Then navigate to the appropriate page
-                        const profilePage = getProfilePage(profile.type, profile.id);
-                        console.log('📄 Page type determined:', profilePage);
-                        
-                        // Pass profile data for created pages
-                        if (profilePage === 'created-page') {
-                          console.log('📄 Navigating to created-page with data:', {
-                            id: profile.id,
-                            name: profile.name,
-                            type: profile.type
-                          });
-                          onPageChange(profilePage as any, {
-                            id: profile.id,
-                            name: profile.name,
-                            type: profile.type
-                          });
-                        } else {
-                          console.log('📄 Navigating to:', profilePage);
-                          onPageChange(profilePage as any);
-                        }
-                        setShowProfileSwitch(false);
-                      } catch (error) {
-                        console.error('❌ Error switching profile:', error);
-                        setShowProfileSwitch(false);
+                  onClick={async () => {
+                    try {
+                      // Switch profile first
+                      await switchProfile(profile.id);
+                      
+                      // Then navigate to the appropriate page
+                      const profilePage = getProfilePage(profile.type, profile.id);
+                      
+                      // Pass profile data for created pages
+                      if (profilePage === 'created-page') {
+                        console.log('Navigating to created-page with data:', {
+                          id: profile.id,
+                          name: profile.name,
+                          type: profile.type
+                        });
+                        onPageChange(profilePage as any, {
+                          id: profile.id,
+                          name: profile.name,
+                          type: profile.type
+                        });
+                      } else {
+                        onPageChange(profilePage as any);
                       }
-                    }}
-                    className="flex items-center space-x-3 flex-1 text-left"
-                  >
-                    <div 
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold"
-                      style={{ background: profile.color }}
-                    >
-                      {getProfileIcon(profile.type)}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2">
-                        <p className="text-sm text-gray-900">{profile.name}</p>
-                        {profile.isActive && <Check className="w-4 h-4 text-blue-600" />}
-                      </div>
-                      <p className="text-xs text-gray-500">{profile.username}</p>
-                      <p className="text-xs text-gray-400 capitalize">
-                        {['academy', 'venue', 'community'].includes(profile.type) 
-                          ? `${profile.type} Page` 
-                          : `${profile.type} Page`
-                        }
-                      </p>
-                    </div>
-                  </button>
-                  
-                  {/* Delete Button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeletePage(profile);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-100 rounded-md text-red-500 hover:text-red-700"
-                    title="Delete Page"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-                ))
-              ) : (
-                <div className="px-4 py-8 text-center">
-                  <Search className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-500">No profiles found</p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {searchQuery ? `No profiles match "${searchQuery}"` : 
-                     filterType !== 'all' ? `No ${filterType} profiles found` : 
-                     'Try adjusting your search or filters'}
-                  </p>
-                  {(searchQuery || filterType !== 'all') && (
-                    <button
-                      onClick={clearAllFilters}
-                      className="mt-3 px-4 py-2 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
-                    >
-                      Clear All Filters
-                    </button>
-                  )}
-                </div>
-              )}
-              
-              {/* Default User Profile (if no profiles in context) */}
-              {availableProfiles.length === 0 && (
-                <button
-                  onClick={() => {
-                    onPageChange('my-profile');
-                    setShowProfileSwitch(false);
+                      setShowProfileSwitch(false);
+                    } catch (error) {
+                      console.error('Error switching profile:', error);
+                      setShowProfileSwitch(false);
+                    }
                   }}
-                  className="w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors bg-blue-50"
+                  className={`w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-orange-50 hover:text-orange-700 transition-all duration-200 ease-in-out ${
+                    profile.isActive ? 'bg-orange-100 border-l-4 border-orange-500' : ''
+                  }`}
                 >
                   <div 
                     className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold"
-                    style={{ background: currentUser.color }}
+                    style={{ background: profile.color }}
                   >
-                    {currentUser.avatar}
+                    {getProfileIcon(profile.type)}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center space-x-2">
-                      <p className="text-sm text-gray-900">My Pages</p>
-                      <Check className="w-4 h-4 text-blue-600" />
+                      <p className="text-sm text-gray-900">{profile.name}</p>
+                      {profile.isActive && <Check className="w-4 h-4 text-orange-600" />}
                     </div>
-                    <p className="text-xs text-gray-500">{currentUser.username}</p>
-                    <p className="text-xs text-gray-400">Personal Pages</p>
+                    <p className="text-xs text-gray-500">{profile.username}</p>
+                    <p className="text-xs text-gray-400 capitalize">
+                      {['academy', 'venue', 'community'].includes(profile.type) 
+                        ? `${profile.type} Page` 
+                        : `${profile.type} Page`}
+                    </p>
                   </div>
-                </button>
+                </div>
+              ))
+              ) : (
+                <div className="px-4 py-8 text-center">
+                  <p className="text-sm text-gray-500">No profiles found</p>
+                </div>
               )}
-              
             </div>
           </div>
         </div>
@@ -871,10 +347,10 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
         <div className="fixed bottom-20 left-6 bg-white rounded-xl shadow-lg border border-gray-200 z-50 w-72 backdrop-blur-none">
           <div className="py-2">
             {/* Current User Profile Info */}
-            <div className="px-4 py-3 border-b border-gray-100">
+            <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-orange-50 to-slate-50">
               <div className="flex items-center space-x-3">
                 <div 
-                  className="w-12 h-12 rounded-full flex items-center justify-center text-white text-sm font-semibold"
+                  className="w-12 h-12 rounded-full flex items-center justify-center text-white text-sm font-semibold shadow-lg"
                   style={{ background: currentUser.color }}
                 >
                   {currentUser.avatar}
@@ -884,7 +360,7 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
                   <p className="text-xs text-gray-500">{currentUser.username}</p>
                   <p className="text-xs text-gray-400">{currentUser.role}</p>
                 </div>
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <div className="w-3 h-3 bg-green-500 rounded-full shadow-sm"></div>
               </div>
               <div className="mt-2 text-xs text-gray-500">
                 <p>Email: {currentUser.email}</p>
@@ -901,7 +377,7 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
             
             <button 
               onClick={handleShowHelpCenter}
-              className="w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+              className="w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-orange-50 hover:text-orange-700 transition-all duration-200 ease-in-out"
             >
               <div>
                 <p className="text-sm text-gray-900">Help Center</p>
@@ -914,7 +390,7 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
                 onPageChange('edit-profile');
                 setShowProfileMenu(false);
               }}
-              className="w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+              className="w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-orange-50 hover:text-orange-700 transition-all duration-200 ease-in-out"
             >
               <div>
                 <p className="text-sm text-gray-900">Edit Profile</p>
@@ -926,7 +402,7 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
               <button 
                 onClick={handleLogout}
                 disabled={isLoggingOut}
-                className="w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-red-50 transition-colors text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-red-50 hover:text-red-700 transition-all duration-200 ease-in-out text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="flex items-center space-x-2">
                   {isLoggingOut && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -951,130 +427,16 @@ export function Sidebar({ currentPage, onPageChange, onLogout, onProfileTypeSele
           }}
         />
       )}
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-6 max-w-md w-full mx-4">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-slate-600 rounded-full flex items-center justify-center">
-                <AlertTriangle className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold bg-gradient-to-r from-orange-500 to-slate-600 bg-clip-text text-transparent">Delete Page</h3>
-                <p className="text-sm text-gray-500">This action cannot be undone</p>
-              </div>
-            </div>
-            
-            
-            <div className="mb-6">
-              <p className="text-sm text-gray-700 mb-2">
-                Are you sure you want to delete the page <strong>{profileToDelete?.name}</strong>?
-              </p>
-              <p className="text-xs text-gray-500">
-                This will permanently remove the page and all associated data.
-              </p>
-              {profileToDelete && (
-                <div className="mt-3 p-2 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-600">
-                    <strong>Page ID:</strong> {profileToDelete.id}
-                  </p>
-                  <p className="text-xs text-gray-600">
-                    <strong>Page Type:</strong> {profileToDelete.type}
-                  </p>
-                </div>
-              )}
-            </div>
-            
-            {/* Password Verification */}
-            <div className="mb-6">
-              <div className="mb-4">
-                <label htmlFor="deletePassword" className="block text-sm font-medium text-gray-700 mb-2">
-                  <Lock className="w-4 h-4 inline mr-1 text-orange-600" />
-                  Enter your password to confirm deletion
-                </label>
-                <div className="relative">
-                  <input
-                    type="password"
-                    id="deletePassword"
-                    value={deletePassword}
-                    onChange={handlePasswordChange}
-                    placeholder="Enter your password"
-                    className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-4 focus:ring-orange-200 focus:border-transparent transition-all duration-200 ${
-                      passwordError 
-                        ? 'border-red-400 bg-red-50 focus:ring-red-200' 
-                        : 'border-gray-200 focus:border-orange-500 hover:border-orange-300'
-                    }`}
-                    disabled={isVerifyingPassword || isDeleting}
-                  />
-                  {isVerifyingPassword && (
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                      <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
-                    </div>
-                  )}
-                </div>
-                {passwordError && (
-                  <p className="mt-2 text-sm text-red-600 flex items-center">
-                    <AlertTriangle className="w-4 h-4 mr-1" />
-                    {passwordError}
-                  </p>
-                )}
-              </div>
-              
-              <div className="bg-gradient-to-r from-orange-50 to-slate-50 border border-orange-200 rounded-xl p-4">
-                <div className="flex items-start">
-                  <AlertTriangle className="w-5 h-5 text-orange-600 mr-3 mt-0.5" />
-                  <div className="text-sm text-gray-700">
-                    <p className="font-semibold text-orange-700 mb-1">Security Notice:</p>
-                    <p>You must enter your password to confirm this deletion. This action cannot be undone.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex space-x-3">
-              <button
-                onClick={cancelDelete}
-                disabled={isDeleting}
-                className="flex-1 px-6 py-3 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200 disabled:opacity-50 border border-gray-300 hover:shadow-md"
-                type="button"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDeletePage}
-                disabled={isDeleting || isVerifyingPassword || !deletePassword.trim()}
-                className="flex-1 px-6 py-3 text-sm font-bold text-white bg-gradient-to-r from-orange-500 to-slate-600 hover:from-orange-600 hover:to-slate-700 active:from-orange-700 active:to-slate-800 rounded-xl transition-all duration-300 disabled:opacity-50 flex items-center justify-center space-x-2 focus:outline-none focus:ring-4 focus:ring-orange-200 focus:ring-offset-2 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none"
-                type="button"
-                style={{ minHeight: '48px' }}
-              >
-                {isDeleting ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span className="font-semibold">Deleting...</span>
-                  </>
-                ) : isVerifyingPassword ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span className="font-semibold">Verifying...</span>
-                  </>
-                ) : !deletePassword.trim() ? (
-                  <>
-                    <Lock className="w-5 h-5" />
-                    <span className="font-semibold">ENTER PASSWORD</span>
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="w-5 h-5" />
-                    <span className="font-semibold">DELETE PAGE</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
+      
+      {/* App Download Modal */}
+      <AppDownloadModal
+        isOpen={showAppDownloadModal}
+        onClose={() => {
+          setShowAppDownloadModal(false);
+          onAppDownloadModalChange?.(false);
+        }}
+        feature={modalFeature}
+      />
     </>
   );
 }

@@ -109,10 +109,6 @@ export function UserProfileView({ onEditProfile, onNavigateToPersonalInfo }: Use
   // Use profile data from context - these will automatically update when context changes
   const experience = userProfile?.profile?.experiences || [];
 
-  const upcomingMatches = [
-    { title: 'Sunday Cricket', time: 'Tomorrow', location: 'Shivaji Park, 7:00 AM' },
-    { title: 'Practice Match', time: 'Today', location: 'Oval Maidan, 6:00 PM' },
-  ];
 
   // Show loading state during initial load
   if (isInitialLoad && loading) {
@@ -224,9 +220,9 @@ export function UserProfileView({ onEditProfile, onNavigateToPersonalInfo }: Use
             </div>
             <button
               onClick={onNavigateToPersonalInfo}
-              className="flex items-center space-x-1 px-3 py-1.5 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 transition-colors"
+              className="flex items-center space-x-1 px-3 py-1.5 bg-blue-500 text-gray-900 text-xs rounded-lg hover:bg-blue-600 transition-colors"
             >
-              <User className="w-3 h-3" />
+              <User className="w-3 h-3 text-gray-900" />
               <span>View</span>
             </button>
           </div>
@@ -373,10 +369,6 @@ export function UserProfileView({ onEditProfile, onNavigateToPersonalInfo }: Use
         
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-white border border-gray-100 rounded-lg p-3 text-center">
-            <div className="text-lg font-semibold text-gray-900">25</div>
-            <div className="text-xs text-gray-500">Matches</div>
-          </div>
-          <div className="bg-white border border-gray-100 rounded-lg p-3 text-center">
             <div className="text-lg font-semibold text-gray-900">1,250</div>
             <div className="text-xs text-gray-500">Runs</div>
           </div>
@@ -387,34 +379,6 @@ export function UserProfileView({ onEditProfile, onNavigateToPersonalInfo }: Use
         </div>
       </div>
 
-      {/* Upcoming Matches Section */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="text-sm">Upcoming Matches</h4>
-          <button 
-            onClick={showMobileAppModal}
-            className="text-xs text-blue-500 hover:text-blue-600 transition-colors"
-          >
-            View All
-          </button>
-        </div>
-        
-        <div className="space-y-2">
-          {upcomingMatches.slice(0, 2).map((match, index) => (
-            <div key={index} className="bg-white border border-gray-100 rounded-lg p-3 hover:bg-gray-50 transition-colors">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <h5 className="text-xs font-medium text-gray-900 truncate">{match.title}</h5>
-                  <p className="text-xs text-gray-500 mt-1">{match.location}</p>
-                </div>
-                <div className="text-right ml-2">
-                  <p className="text-xs font-medium text-blue-600">{match.time}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
 
       {/* Edit Profile Button */}
       <div className="flex space-x-2 mb-4">
