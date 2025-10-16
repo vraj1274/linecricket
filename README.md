@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # LineCricket - Full Stack Cricket Application
 
 A comprehensive cricket application with frontend, backend, and database integration.
@@ -169,3 +170,6 @@ For support and questions, please open an issue in the repository.
 ---
 
 **Built with ❤️ for the cricket community**
+=======
+# linecricket
+>>>>>>> ca3568dc5449a46997aa3ccd51a15750a16f5173
