@@ -15,6 +15,10 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+# Override with correct database password
+os.environ['DB_PASSWORD'] = 'root'
+os.environ['DATABASE_URL'] = 'postgresql://postgres:root@localhost:5432/linecricket25'
+
 # Initialize Flask app
 app = Flask(__name__)
 
@@ -260,7 +264,7 @@ def get_posts_working():
         import psycopg2
         
         # Connect to database directly
-        conn = psycopg2.connect('postgresql://postgres:postgres@localhost:5432/linecricket25')
+        conn = psycopg2.connect('postgresql://postgres:root@localhost:5432/linecricket25')
         cursor = conn.cursor()
         
         cursor.execute("""
